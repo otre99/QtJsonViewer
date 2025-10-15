@@ -24,6 +24,7 @@ class MainWindow : public QMainWindow {
   void on_actionOpen_JSON_triggered();
   void on_actionZoom_In_triggered();
   void on_actionZoom_Out_triggered();
+  void on_treeView_clicked(const QModelIndex &index);
 
  private:
   void setZoom(double pt);

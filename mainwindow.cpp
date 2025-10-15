@@ -10,6 +10,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
   ui->setupUi(this);
 
+  // tree view
   ui->treeView->setModel(m_jsonTreeModel = new JsonTreeViewModel(this));
   ui->treeView->setUniformRowHeights(true);
   ui->treeView->setAnimated(false);
@@ -27,6 +28,14 @@ MainWindow::MainWindow(QWidget *parent)
   m_basePt = ui->treeView->font().pointSizeF();  // remember starting font
   m_currentPt = m_basePt > 0 ? m_basePt : 10.0;
   m_headerView = ui->treeView->header();
+
+  // util tools
+
+  connect(ui->actionNode_info, &QAction::toggled, ui->dockWidgetNodeInfo,
+          &QDockWidget::setVisible);
+  connect(ui->dockWidgetNodeInfo, &QDockWidget::visibilityChanged,
+          ui->actionNode_info, &QAction::setChecked);
+  ui->dockWidgetNodeInfo->setVisible(false);
 }
 
 MainWindow::~MainWindow() { delete ui; }
@@ -53,6 +62,7 @@ void MainWindow::loadJsonFile(const QString &jsonFilePath) {
 
   progress.setLabelText("Creating JSON tree...");
   m_jsonTreeModel->populateFromJson(doc, progress);
+  // ui->treeView->expandAll();
 }
 
 void MainWindow::setZoom(double pt) {
@@ -60,10 +70,9 @@ void MainWindow::setZoom(double pt) {
   if (qFuzzyCompare(pt, m_currentPt)) return;
   m_currentPt = pt;
 
-  QFont f = m_headerView->font();
-  f.setPointSizeF(m_currentPt);
-  // ui->treeView->setFont(f);
-  m_headerView->setFont(f);
+  // QFont f = m_headerView->font();
+  // f.setPointSizeF(m_currentPt);
+  // m_headerView->setFont(f);
 
   m_jsonTreeModel->setFontSize(m_currentPt);
   // Ask view to recompute row heights & layout after font change
@@ -78,3 +87,13 @@ void MainWindow::setZoom(double pt) {
 void MainWindow::on_actionZoom_In_triggered() { setZoom(m_currentPt * 1.10); }
 
 void MainWindow::on_actionZoom_Out_triggered() { setZoom(m_currentPt / 1.10); }
+
+void MainWindow::on_treeView_clicked(const QModelIndex &index) {
+  if (ui->dockWidgetNodeInfo->isVisible()) {
+    ui->leNodeKey->setText(m_jsonTreeModel->nodeKey(index));
+    ui->leNodePath->setText(m_jsonTreeModel->nodePath(index));
+    ui->leNodeValue->setPlainText(m_jsonTreeModel->nodeValueStr(index));
+  }
+
+  statusBar()->showMessage("Node Path: " + m_jsonTreeModel->nodePath(index));
+}

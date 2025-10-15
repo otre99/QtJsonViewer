@@ -6,6 +6,11 @@
 #include "json_nodes.h"
 #include "mainwindow.h"
 
+union Data {
+  double num;
+  quint32 index;
+};
+
 int main(int argc, char *argv[]) {
   QApplication a(argc, argv);
 
@@ -20,6 +25,6 @@ int main(int argc, char *argv[]) {
   qDebug() << "QVariant" << sizeof(QVariant);
   qDebug() << "QString" << sizeof(QString);
   qDebug() << "string" << sizeof(string);
-  qDebug() << "Node" << sizeof(Node);
+  qDebug() << "data" << sizeof(Data);
   return a.exec();
 }

@@ -30,13 +30,17 @@ class JsonTreeViewModel : public QAbstractItemModel {
   QVariant headerData(int section, Qt::Orientation orientation,
                       int role = Qt::DisplayRole) const override;
 
+  QString nodePath(const QModelIndex &idx) const;
+  QString nodeKey(const QModelIndex &idx) const;
+  QString nodeValueStr(const QModelIndex &idx) const;
+
  signals:
 
  public slots:
   void setFontSize(const double pt);
 
  private:
-  Node *nodeFromIndex(const QModelIndex &idx) const;
+  quint32 nodeFromIndex(const QModelIndex &idx) const;
   QFont m_baseFont;
   FastJsonTree m_fastJsonTree;
 };
