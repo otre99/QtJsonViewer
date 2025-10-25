@@ -11,11 +11,21 @@
 
 class JsonTreeViewModel : public QAbstractItemModel {
   Q_OBJECT
+  friend class ListViewSearchModel;
+  struct Brushes {
+    QBrush key;
+    QBrush str;
+    QBrush num;
+    QBrush boolean;
+    QBrush nullish;
+    QBrush containerArray;
+    QBrush containerObject;
+  } B;
+
  public:
   JsonTreeViewModel(QObject *parent);
   ~JsonTreeViewModel();
-  void populateFromJson(const QJsonDocument &doc,
-                        QProgressDialog &progressDialog);
+  bool populateFromJson(const QString jsonFilePath);
 
   QModelIndex index(int row, int column,
                     const QModelIndex &parent = {}) const override;
@@ -24,8 +34,6 @@ class JsonTreeViewModel : public QAbstractItemModel {
   int columnCount(const QModelIndex &parentIndex = {}) const override;
   QVariant data(const QModelIndex &index, int role) const override;
 
-  // bool setData(const QModelIndex &idx, const QVariant &value,
-  //              int role) override;
   Qt::ItemFlags flags(const QModelIndex &index) const override;
   QVariant headerData(int section, Qt::Orientation orientation,
                       int role = Qt::DisplayRole) const override;
@@ -33,6 +41,7 @@ class JsonTreeViewModel : public QAbstractItemModel {
   QString nodePath(const QModelIndex &idx) const;
   QString nodeKey(const QModelIndex &idx) const;
   QString nodeValueStr(const QModelIndex &idx) const;
+  NodeType nodeType(const QModelIndex &idx) const;
 
  signals:
 

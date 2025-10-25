@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(Qt6 REQUIRED COMPONENTS Core)
 
 qt_standard_project_setup()
 
@@ -16,6 +18,8 @@ qt_add_executable(QtJsonViewer
     mainwindow.ui
     json_nodes.h json_nodes.cpp
     json_treeview_model.h json_treeview_model.cpp
+    list_view_search_model.h list_view_search_model.cpp
+    text_matcher.h text_matcher.cpp
 )
 
 target_link_libraries(QtJsonViewer
@@ -23,6 +27,8 @@ target_link_libraries(QtJsonViewer
         Qt::Core
         Qt::Widgets
 )
+target_link_libraries(QtJsonViewer PRIVATE Qt6::Core tbb)
+target_link_libraries(QtJsonViewer PRIVATE Qt6::Core)
 
 include(GNUInstallDirs)
 

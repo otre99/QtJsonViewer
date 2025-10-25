@@ -1,0 +1,286 @@
+#include "mainwindow.h"
+
+#include <QFileDialog>
+#include <QJsonObject>
+#include <QMessageBox>
+#include <QProgressDialog>
+#include <QSettings>
+#include <QtConcurrent/QtConcurrent>
+
+#include "QJsonDocument"
+#include "json_treeview_model.h"
+#include "list_view_search_model.h"
+#include "ui_mainwindow.h"
+
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent), ui(new Ui::MainWindow) {
+  ui->setupUi(this);
+  setFocusPolicy(Qt::StrongFocus);
+
+  // tree view
+  ui->treeView->setModel(m_jsonTreeModel = new JsonTreeViewModel(this));
+  ui->treeView->setUniformRowHeights(true);
+  ui->treeView->setAnimated(false);
+  ui->treeView->setSortingEnabled(false);
+  ui->treeView->setExpandsOnDoubleClick(true);
+  ui->treeView->setAllColumnsShowFocus(false);
+
+  ui->treeView->setAlternatingRowColors(true);
+  ui->treeView->setIndentation(16);
+  ui->treeView->header()->setStretchLastSection(true);
+  ui->treeView->setFont(qApp->font());
+  m_basePt = ui->treeView->font().pointSizeF();  // remember starting font
+  m_currentPt = m_basePt > 0 ? m_basePt : 12.0;
+  m_headerView = ui->treeView->header();
+
+  // search list view
+  ui->listViewSearch->setModel(
+      m_searchListModel = new ListViewSearchModel(m_jsonTreeModel, this));
+  ui->listViewSearch->setAlternatingRowColors(true);
+
+  // util tools
+  connect(ui->actionNode_info, &QAction::toggled, ui->dockWidgetInfo,
+          &QDockWidget::setVisible);
+  connect(ui->dockWidgetInfo, &QDockWidget::visibilityChanged,
+          ui->actionNode_info, &QAction::setChecked);
+  // ui->dockWidgetInfo->setVisible(false);
+
+  // set the font size for models
+  m_jsonTreeModel->setFontSize(m_currentPt);
+  m_searchListModel->setFontSize(m_currentPt);
+
+  // for recent files
+  updateRecentMenu();
+
+  // search
+  on_comboBoxSearchMode_currentIndexChanged(0);
+  connect(m_searchListModel, &ListViewSearchModel::modelReset,
+          ui->pushButtonSearch, [this]() {
+            // ui->pushButtonSearch->setEnabled(true);
+            const int n = m_searchListModel->rowCount({});
+            // ui->listViewSearch->setVisible(n != 0);
+            ui->labelSearchResults->setText(QString("Results: %1").arg(n));
+          });
+}
+
+MainWindow::~MainWindow() { delete ui; }
+
+void MainWindow::on_actionOpen_JSON_triggered() {
+  QString jsonFilePath = QFileDialog::getOpenFileName(this, "Json file");
+  if (jsonFilePath.isEmpty()) return;
+  loadJsonFile(jsonFilePath);
+}
+
+void MainWindow::openRecent() {
+  auto *a = qobject_cast<QAction *>(sender());
+  if (!a) return;
+  const QString path = a->data().toString();
+  if (path.isEmpty()) return;
+  loadJsonFile(path);
+}
+
+void MainWindow::loadJsonFile(const QString &jsonFilePath) {
+  QApplication::setOverrideCursor(Qt::WaitCursor);
+  m_jsonTreeModel->populateFromJson(jsonFilePath);
+  addToRecentFiles(jsonFilePath);
+
+  ui->statusbar->showMessage("File: " + jsonFilePath);
+  clearCurrentNodeInfo();
+  QApplication::restoreOverrideCursor();
+}
+
+void MainWindow::setZoom(double pt) {
+  pt = std::clamp(pt, 8.0, 28.0);  // clamp to a sensible range
+  if (qFuzzyCompare(pt, m_currentPt)) return;
+  m_currentPt = pt;
+  m_jsonTreeModel->setFontSize(m_currentPt);
+  m_searchListModel->setFontSize(m_currentPt);
+}
+
+void MainWindow::on_actionZoom_In_triggered() { setZoom(m_currentPt * 1.10); }
+
+void MainWindow::on_actionZoom_Out_triggered() { setZoom(m_currentPt / 1.10); }
+
+void MainWindow::on_treeView_clicked(const QModelIndex &index) {
+  if (ui->dockWidgetInfo->isVisible()) {
+    ui->leNodeKey->setText(m_jsonTreeModel->nodeKey(index));
+    ui->leNodePath->setText(m_jsonTreeModel->nodePath(index));
+    ui->leNodeValue->setPlainText(m_jsonTreeModel->nodeValueStr(index));
+
+    // int rows = m_jsonTreeModel->rowCount(index);
+    // if (rows >= 0) {
+    //   ui->lineEditChildrenCount->setText(QString("%1").arg(rows));
+    // } else {
+    //   ui->lineEditChildrenCount->setText("---");
+    // }
+
+    switch (m_jsonTreeModel->nodeType(index)) {
+      case NodeType::Array: {
+        int rows = m_jsonTreeModel->rowCount(index);
+        ui->lineEditNodeType->setText(
+            QString("Array (children: %1)").arg(rows));
+        break;
+      }
+      case NodeType::Object: {
+        int rows = m_jsonTreeModel->rowCount(index);
+        ui->lineEditNodeType->setText(
+            QString("Object (children: %1)").arg(rows));
+        break;
+      }
+      case NodeType::Null:
+        ui->lineEditNodeType->setText("Null");
+        break;
+      case NodeType::Num:
+        ui->lineEditNodeType->setText("Number");
+        break;
+      case NodeType::Bool:
+        ui->lineEditNodeType->setText("Bool");
+        break;
+      case NodeType::Str:
+        ui->lineEditNodeType->setText("String");
+        break;
+    }
+  }
+}
+
+void MainWindow::on_pushButtonSearch_clicked() {
+  auto mode = static_cast<ListViewSearchModel::SearchMode>(
+      ui->comboBoxSearchMode->currentIndex());
+
+  QString searchText = ui->lineEditSearchText->text().trimmed();
+  const bool wholeWord = ui->checkBoxValueWW->isChecked();
+  const bool caseSensitive = ui->checkBoxValueCS->isChecked();
+
+  switch (mode) {
+    case ListViewSearchModel::SearchMode::ValueBool:
+      searchText = ui->comboBoxBoolTF->currentText();
+      break;
+
+    case ListViewSearchModel::SearchMode::ValueNum: {
+      bool ok;
+      auto _ = searchText.toDouble(&ok);
+      if (!ok) {
+        QMessageBox::warning(this, "Wrong search text",
+                             "Text pattern must be convertible to a number");
+        return;
+      }
+      break;
+    }
+    default:
+      break;
+  }
+
+  m_searchListModel->doSearch(mode, searchText, caseSensitive, wholeWord,
+                              false);
+
+  // if (true) {
+  //   ui->pushButtonSearch->setEnabled(false);
+  //   auto fut =
+  //       QtConcurrent::run(&ListViewSearchModel::doSearch, m_searchListModel,
+  //                         mode, searchText, caseSensitive, wholeWord, false);
+  // } else {
+  //   m_searchListModel->doSearch(mode, searchText, caseSensitive, wholeWord,
+  //                               false);
+  // }
+}
+
+void MainWindow::on_listViewSearch_clicked(const QModelIndex &index) {
+  auto idx = m_searchListModel->toTreeView(index);
+  if (!idx.isValid()) return;
+  QModelIndex p = idx.parent();
+  while (p.isValid()) {
+    ui->treeView->expand(p);
+    p = p.parent();
+  }
+  ui->treeView->setCurrentIndex(idx);
+  ui->treeView->scrollTo(idx, QAbstractItemView::PositionAtCenter);
+}
+
+void MainWindow::addToRecentFiles(const QString &path) {
+  QSettings s;  // make sure QCoreApplication::setOrganizationName/AppName set
+                // at startup
+  QStringList list = s.value("recentFiles").toStringList();
+
+  list.removeAll(path);  // de-dup
+  list.prepend(path);    // most recent first
+
+  // prune non-existing + cap
+  QStringList cleaned;
+  cleaned.reserve(kMaxRecent);
+  for (auto &&p : list) {
+    if (QFileInfo::exists(p)) {
+      cleaned.push_back(p);
+      if (cleaned.size() == kMaxRecent) break;
+    }
+  }
+  s.setValue("recentFiles", cleaned);
+  updateRecentMenu();
+}
+
+void MainWindow::updateRecentMenu() {
+  QSettings s;
+  QStringList list = s.value("recentFiles").toStringList();
+
+  auto recent_actions = ui->menuRecent_files->actions();
+  const int nr = list.size();
+  QFontMetrics fm(font());
+  const int maxTextPx = 1024;  // tweak: elide long paths
+  int i = 0;
+  for (i = 0; i < nr; ++i) {
+    QAction *a;
+    if (i < recent_actions.size()) {  // use existing action
+      a = recent_actions[i];
+    } else {
+      a = new QAction(this);
+      connect(a, &QAction::triggered, this, &MainWindow::openRecent);
+      ui->menuRecent_files->addAction(a);
+    }
+    const QString path = list.at(i);
+    const QString basename = QFileInfo(path).baseName();
+    const QString shown = fm.elidedText(path, Qt::ElideMiddle, maxTextPx);
+    a->setText(
+        QString::fromLatin1("&%1 [%2]  %3").arg(i + 1).arg(basename, shown));
+    a->setData(path);
+  }
+  for (; i < recent_actions.size(); ++i) {
+    ui->menuRecent_files->removeAction(recent_actions[i]);
+  }
+}
+
+void MainWindow::on_comboBoxSearchMode_currentIndexChanged(int index) {
+  auto mode = static_cast<ListViewSearchModel::SearchMode>(index);
+  bool txt_search = true;
+  bool null_search = false;
+  bool bool_search = false;
+  bool num_search = false;
+  switch (mode) {
+    case ListViewSearchModel::SearchMode::ValueNum: {
+      num_search = true;
+      txt_search = true;
+      break;
+    }
+    case ListViewSearchModel::SearchMode::ValueBool: {
+      bool_search = true;
+      txt_search = false;
+      break;
+    }
+    case ListViewSearchModel::SearchMode::ValueNull: {
+      // null_search = true;
+      txt_search = false;
+      break;
+    }
+    default:
+      break;
+  }
+  ui->lineEditSearchText->setVisible(txt_search);
+  ui->comboBoxBoolTF->setVisible(bool_search);
+  ui->checkBoxValueCS->setVisible(txt_search && !num_search);
+  ui->checkBoxValueWW->setVisible(txt_search && !num_search);
+}
+
+void MainWindow::clearCurrentNodeInfo() {
+  ui->leNodeKey->clear();
+  ui->leNodePath->clear();
+  ui->leNodeValue->clear();
+  ui->lineEditNodeType->clear();
+}

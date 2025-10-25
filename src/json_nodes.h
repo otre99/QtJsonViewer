@@ -1,13 +1,21 @@
 #ifndef JSON_NODES_H
 #define JSON_NODES_H
+#include <rapidjson/document.h>
+#include <rapidjson/istreamwrapper.h>
+
 #include <QJsonValue>
 #include <QString>
 #include <QVariant>
 #include <QVector>
 #include <limits>
+
 using namespace std;
 constexpr long PREALLOCATION_SIZE = 256000000;
 constexpr quint32 MAX_U32 = numeric_limits<quint32>::max();
+
+using rapidjson::Document;
+using rapidjson::IStreamWrapper;
+using RJVal = rapidjson::Value;
 
 class QProgressDialog;
 
@@ -25,32 +33,32 @@ class FastJsonTree {
     double num;
     quint32 index;
   };
+  friend class ListViewSearchModel;
 
  public:
   FastJsonTree();
-  void buildTree(const QJsonValue &jsonValue, QProgressDialog *progressDialog);
+  void buildTree(const Document *doc);
 
   string key(quint32 n) const;
   QVariant value(quint32 n) const;
+  string valueAsStr(quint32 n) const;
+  string nodePreview(quint32 n) const;
+
   quint32 parent(quint32 n) const;
   quint32 rows(quint32 n) const;
   quint32 firstChild(quint32 n) const;
   quint32 rowInParent(quint32 n) const;
   NodeType type(quint32 n) const;
   string nodePath(quint32 n) const;
+  quint32 nodesCount() const;
 
   void clear();
   bool isEmpty() const;
 
  private:
-  void _buildTreeRecursive(const QJsonValue &jsonValue, quint32 parentIndex);
-  quint32 _addKeyAndGetPos(const QString &key);
-  void _addNode(const quint32 pIdx, const quint32 cIdx, const quint32 cCount,
-                const quint32 row, const NodeType type, const quint32 kIdx,
-                const Data d);
-  NodeType _typeFromJson(const QJsonValue &value, Data &d);
-
-  QProgressDialog *m_progressDlg{nullptr};
+  void _buildTreeRecursive(const RJVal *jsonValue, const quint32 parentIndex);
+  quint32 _addKeyAndGetPos(const string &key);
+  NodeType _typeFromJson(const RJVal &value, Data &d);
 
   vector<quint32> m_parentPosition;
   vector<quint32> m_firstChildPosition;
@@ -62,7 +70,7 @@ class FastJsonTree {
 
   vector<string> m_nodeStringValueTable;
   vector<string> m_nodeKeyTable;
-  QHash<QString, int> m_allKeys;
+  QHash<string, int> m_allKeys;
   qint32 m_currentKeyPos{-1};
 };
 

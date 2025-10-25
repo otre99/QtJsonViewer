@@ -1,36 +1,58 @@
 #include "json_treeview_model.h"
 
 #include <qprogressdialog.h>
+#include <rapidjson/document.h>
+#include <rapidjson/istreamwrapper.h>
 
 #include <QApplication>
 #include <QBrush>
+#include <QFile>
 #include <QFont>
 #include <QFontDatabase>
 #include <QIcon>
 #include <QJsonArray>
 #include <QWidget>
+#include <fstream>
+
+using rapidjson::Document;
+using rapidjson::IStreamWrapper;
 
 JsonTreeViewModel::JsonTreeViewModel(QObject *parent)
     : QAbstractItemModel(parent) {
   m_baseFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+
+  B.key = QColor(0, 87, 174);
+  B.str = QColor(191, 3, 3);
+  B.num = QColor(176, 128, 0);
+  B.boolean = QColor(31, 28, 27);
+  B.nullish = QColor(31, 28, 27);
+  B.containerArray = QColor(0, 110, 40);
+  B.containerObject = QColor(100, 74, 155);
 }
 
-void JsonTreeViewModel::populateFromJson(const QJsonDocument &doc,
-                                         QProgressDialog &progressDialog) {
+bool JsonTreeViewModel::populateFromJson(const QString jsonFilePath) {
+  auto utf8_path = jsonFilePath.toUtf8();
+  std::ifstream ifs(utf8_path.constData(), std::ios::binary);
+  if (!ifs.is_open()) {
+    return false;
+  }
+
+  IStreamWrapper isw(ifs);
+  Document doc;
+  // You can add flags like kParseCommentsFlag, kParseTrailingCommasFlag if
+  // needed
+  doc.ParseStream(isw);
+  if (doc.HasParseError()) {
+    return false;
+  }
+
   beginResetModel();
 
   m_fastJsonTree.clear();
-
-  progressDialog.setValue(50);
-  if (doc.isArray()) {
-    auto value = QJsonValue(doc.array());
-    m_fastJsonTree.buildTree(value, &progressDialog);
-  } else if (doc.isObject()) {
-    auto value = QJsonValue(doc.object());
-    m_fastJsonTree.buildTree(value, &progressDialog);
-  }
+  m_fastJsonTree.buildTree(&doc);
 
   endResetModel();
+  return true;
 }
 
 JsonTreeViewModel::~JsonTreeViewModel() { m_fastJsonTree.clear(); }
@@ -57,7 +79,7 @@ QModelIndex JsonTreeViewModel::parent(const QModelIndex &childIdx) const {
   if (pn_idx == MAX_U32) {  // root node
     return QModelIndex();   // root node has invalid parent
   }
-  return createIndex(m_fastJsonTree.rowInParent(cn_idx), 0,
+  return createIndex(m_fastJsonTree.rowInParent(pn_idx), 0,
                      static_cast<quintptr>(pn_idx));
 }
 
@@ -78,21 +100,12 @@ int JsonTreeViewModel::columnCount(const QModelIndex &parentIndex) const {
 
 QVariant JsonTreeViewModel::data(const QModelIndex &idx, int role) const {
   // qDebug() << "data" << idx << role;
-  struct Brushes {
-    QBrush key;
-    QBrush str;
-    QBrush num;
-    QBrush boolean;
-    QBrush nullish;
-    QBrush containerArray;
-    QBrush containerObject;
-    bool inited = false;
-  };
-  static Brushes B;
 
   if (!idx.isValid()) return {};
 
-  quint32 n_idx = nodeFromIndex(idx);
+  const quint32 n_idx = nodeFromIndex(idx);
+  // qDebug() << "data()" << n_idx << m_fastJsonTree.key(n_idx) <<
+  // m_fastJsonTree.valueAsStr(n_idx);
   const bool is_key_col = (idx.column() == 0);
 
   switch (role) {
@@ -102,17 +115,6 @@ QVariant JsonTreeViewModel::data(const QModelIndex &idx, int role) const {
                  : m_fastJsonTree.value(n_idx);
 
     case Qt::ForegroundRole: {
-      if (!B.inited) {
-        B.key = QColor(0, 87, 174);
-        B.str = QColor(191, 3, 3);
-        B.num = QColor(176, 128, 0);
-        B.boolean = QColor(31, 28, 27);
-        B.nullish = QColor(31, 28, 27);
-        B.containerArray = QColor(0, 110, 40);
-        B.containerObject = QColor(100, 74, 155);
-        B.inited = true;
-      }
-
       if (is_key_col) {
         return B.key;
       } else {
@@ -161,30 +163,6 @@ QVariant JsonTreeViewModel::data(const QModelIndex &idx, int role) const {
   return {};
 }
 
-// bool LabelTreeModel::setData(const QModelIndex &idx, const QVariant
-// &value,
-//                              int role) {
-//   if (!idx.isValid()) return false;
-//   auto *n = static_cast<TreeNode *>(idx.internalPointer());
-//   if (n->isRootNode()) return false;
-
-//   if (role == Qt::CheckStateRole && !n->isRootNode()) {
-//     Qt::CheckState checkState =
-//     static_cast<Qt::CheckState>(value.toInt()); auto
-//     &&oldCheckStateIter =
-//     m_currentLabels[n->annType()].find(n->label());
-
-//     if (oldCheckStateIter.value() != checkState) {
-//       *oldCheckStateIter = checkState;
-//       emit dataChanged(idx, idx, {role});
-//       emit labelEnableChanged(n->annType(), n->label(),
-//                               checkState == Qt::Checked);
-//     }
-//     return true;
-//   }
-//   return false;
-// }
-
 Qt::ItemFlags JsonTreeViewModel::flags(const QModelIndex &idx) const {
   if (!idx.isValid()) return Qt::NoItemFlags;
   quint32 n_idx = nodeFromIndex(idx);
@@ -221,6 +199,8 @@ QString JsonTreeViewModel::nodeKey(const QModelIndex &idx) const {
 QString JsonTreeViewModel::nodeValueStr(const QModelIndex &idx) const {
   quint32 n = nodeFromIndex(idx);
   switch (m_fastJsonTree.type(n)) {
+    case NodeType::Array:
+    case NodeType::Object:
     case NodeType::Str:
       return m_fastJsonTree.value(n).toString();
     case NodeType::Num:
@@ -230,6 +210,10 @@ QString JsonTreeViewModel::nodeValueStr(const QModelIndex &idx) const {
     default:
       return "null";
   }
+}
+
+NodeType JsonTreeViewModel::nodeType(const QModelIndex &idx) const {
+  return m_fastJsonTree.type(nodeFromIndex(idx));
 }
 
 quint32 JsonTreeViewModel::nodeFromIndex(const QModelIndex &idx) const {
