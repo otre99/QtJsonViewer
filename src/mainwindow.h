@@ -6,6 +6,7 @@
 
 class JsonTreeViewModel;
 class ListViewSearchModel;
+class QTreeView;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -31,9 +32,14 @@ class MainWindow : public QMainWindow {
   void openRecent();
   void on_comboBoxSearchMode_currentIndexChanged(int index);
   void clearCurrentNodeInfo();
+  void on_treeView_customContextMenuRequested(const QPoint &pos);
 
  private:
   void setZoom(double pt);
+  void setupTreeViewMenu(QMenu &menu, const QModelIndex &index);
+  void collapseRecursively(QTreeView *v, const QModelIndex &root);
+  void expandRecursively(QTreeView *v, const QModelIndex &root, int lev = 0);
+
   Ui::MainWindow *ui;
   JsonTreeViewModel *m_jsonTreeModel{nullptr};
   ListViewSearchModel *m_searchListModel{nullptr};
@@ -44,5 +50,6 @@ class MainWindow : public QMainWindow {
   void addToRecentFiles(const QString &path);
   void updateRecentMenu();
   static constexpr int kMaxRecent = 16;
+  static constexpr int kMaxExpandCollapseNodesCount = 1 << 20;
 };
 #endif  // MAINWINDOW_H

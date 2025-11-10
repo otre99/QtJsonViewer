@@ -42,6 +42,7 @@ class JsonTreeViewModel : public QAbstractItemModel {
   QString nodeKey(const QModelIndex &idx) const;
   QString nodeValueStr(const QModelIndex &idx) const;
   NodeType nodeType(const QModelIndex &idx) const;
+  quint32 subTreeNodesCount(const QModelIndex &idx) const;
 
  signals:
 

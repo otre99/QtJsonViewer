@@ -9,8 +9,8 @@
 int main(int argc, char *argv[]) {
   QApplication a(argc, argv);
 
-  a.setApplicationName("RCCR");
-  a.setOrganizationName("QtJsonViewer");
+  a.setApplicationName("QtJsonViewer");
+  a.setOrganizationName("RCCR");
   a.setOrganizationDomain("rccr1987.com");
   a.setStyle("Fusion");
 

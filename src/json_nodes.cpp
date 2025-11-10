@@ -27,7 +27,7 @@ void FastJsonTree::buildTree(const Document *doc) {
 
   m_parentPosition.push_back(MAX_U32);
   m_firstChildPosition.push_back(MAX_U32);
-  m_childCount.push_back(MAX_U32);
+  m_childCount.push_back(0);
   m_rowInParent.push_back(0);
   m_nodeKeyPos.push_back(MAX_U32);
   m_nodeValueOrPos.push_back({});
@@ -167,9 +167,8 @@ void FastJsonTree::clear() {
 
 bool FastJsonTree::isEmpty() const { return /*true*/ m_parentPosition.empty(); }
 
-void FastJsonTree::_buildTreeRecursive(const RJVal *jsonValue,
-                                       const quint32 parentIndex) {
-
+quint32 FastJsonTree::_buildTreeRecursive(const RJVal *jsonValue,
+                                          const quint32 parentIndex) {
   const quint32 firstChildPosition = m_parentPosition.size();
   const quint32 childrenCount =
       jsonValue->IsArray() ? jsonValue->Size() : jsonValue->MemberCount();
@@ -184,6 +183,7 @@ void FastJsonTree::_buildTreeRecursive(const RJVal *jsonValue,
     m_nodeValueOrPos.resize(firstChildPosition + childrenCount);
   }
 
+  int child_count = childrenCount;
   quint32 row = 0;
   Data d;
   if (jsonValue->IsArray()) {
@@ -201,7 +201,7 @@ void FastJsonTree::_buildTreeRecursive(const RJVal *jsonValue,
       m_nodeValueOrPos[idx] = d;
 
       if (type == NodeType::Array || type == NodeType::Object) {
-        _buildTreeRecursive(&val, idx);
+        child_count += _buildTreeRecursive(&val, idx);
       }
       ++row;
     }
@@ -227,13 +227,15 @@ void FastJsonTree::_buildTreeRecursive(const RJVal *jsonValue,
       m_nodeValueOrPos[idx] = d;
 
       if (type == NodeType::Array || type == NodeType::Object) {
-        _buildTreeRecursive(&val, idx);
+        child_count += _buildTreeRecursive(&val, idx);
       }
       ++row;
     }
   }
   m_firstChildPosition[parentIndex] = firstChildPosition;
   m_childCount[parentIndex] = childrenCount;
+  m_nodeValueOrPos[parentIndex].index = child_count;
+  return child_count;
 }
 
 quint32 FastJsonTree::_addKeyAndGetPos(const string &key) {

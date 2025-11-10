@@ -216,6 +216,17 @@ NodeType JsonTreeViewModel::nodeType(const QModelIndex &idx) const {
   return m_fastJsonTree.type(nodeFromIndex(idx));
 }
 
+quint32 JsonTreeViewModel::subTreeNodesCount(const QModelIndex &idx) const {
+  quint32 n = nodeFromIndex(idx);
+  switch (m_fastJsonTree.type(n)) {
+    case NodeType::Array:
+    case NodeType::Object:
+      return m_fastJsonTree.m_nodeValueOrPos[n].index;
+    default:
+      return 0;
+  }
+}
+
 quint32 JsonTreeViewModel::nodeFromIndex(const QModelIndex &idx) const {
   if (!idx.isValid()) return MAX_U32;
   return static_cast<quint32>(idx.internalId());

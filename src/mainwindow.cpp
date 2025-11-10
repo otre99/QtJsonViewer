@@ -33,6 +33,8 @@ MainWindow::MainWindow(QWidget *parent)
   m_currentPt = m_basePt > 0 ? m_basePt : 12.0;
   m_headerView = ui->treeView->header();
 
+  ui->treeView->setContextMenuPolicy(Qt::CustomContextMenu);
+
   // search list view
   ui->listViewSearch->setModel(
       m_searchListModel = new ListViewSearchModel(m_jsonTreeModel, this));
@@ -147,7 +149,7 @@ void MainWindow::on_pushButtonSearch_clicked() {
   auto mode = static_cast<ListViewSearchModel::SearchMode>(
       ui->comboBoxSearchMode->currentIndex());
 
-  QString searchText = ui->lineEditSearchText->text().trimmed();
+  QString searchText = ui->lineEditSearchText->text();
   const bool wholeWord = ui->checkBoxValueWW->isChecked();
   const bool caseSensitive = ui->checkBoxValueCS->isChecked();
 
@@ -166,22 +168,26 @@ void MainWindow::on_pushButtonSearch_clicked() {
       }
       break;
     }
+
+    case ListViewSearchModel::SearchMode::ValueStr:
+    case ListViewSearchModel::SearchMode::Key:
+    case ListViewSearchModel::SearchMode::ValueAny:
+    case ListViewSearchModel::SearchMode::KeyOrValue:
+      if (wholeWord == false && searchText.isEmpty()) {
+        QMessageBox::warning(this, "Wrong search text",
+                             "Empty text is not supported in this search mode");
+        return;
+      }
+      break;
+
     default:
       break;
   }
 
+  QApplication::setOverrideCursor(Qt::WaitCursor);
   m_searchListModel->doSearch(mode, searchText, caseSensitive, wholeWord,
                               false);
-
-  // if (true) {
-  //   ui->pushButtonSearch->setEnabled(false);
-  //   auto fut =
-  //       QtConcurrent::run(&ListViewSearchModel::doSearch, m_searchListModel,
-  //                         mode, searchText, caseSensitive, wholeWord, false);
-  // } else {
-  //   m_searchListModel->doSearch(mode, searchText, caseSensitive, wholeWord,
-  //                               false);
-  // }
+  QApplication::restoreOverrideCursor();
 }
 
 void MainWindow::on_listViewSearch_clicked(const QModelIndex &index) {
@@ -283,4 +289,74 @@ void MainWindow::clearCurrentNodeInfo() {
   ui->leNodePath->clear();
   ui->leNodeValue->clear();
   ui->lineEditNodeType->clear();
+}
+
+void MainWindow::on_treeView_customContextMenuRequested(const QPoint &pos) {
+  const QModelIndex index = ui->treeView->indexAt(pos);
+  const QPoint global_point = ui->treeView->mapToGlobal(pos);
+
+  QMenu menu(ui->treeView);
+  setupTreeViewMenu(menu, index);
+  if (menu.actions().size()) menu.exec(QCursor::pos());
+}
+
+void MainWindow::setupTreeViewMenu(QMenu &menu, const QModelIndex &index) {
+  NodeType t = m_jsonTreeModel->nodeType(index);
+  QAction *act{nullptr};
+
+  const bool nodeIsContainer = t == NodeType::Object || t == NodeType::Array;
+  if (nodeIsContainer) {
+    quint32 subnodes = m_jsonTreeModel->subTreeNodesCount(index);
+    quint32 rows = m_jsonTreeModel->rowCount(index);
+
+    if (subnodes <= kMaxExpandCollapseNodesCount || subnodes == rows) {
+      act = menu.addAction("Collapse all");
+      connect(act, &QAction::triggered, ui->treeView,
+              [&]() { collapseRecursively(ui->treeView, index); });
+
+      act = menu.addAction("Expand all");
+      connect(act, &QAction::triggered, this,
+              [&]() { ui->treeView->expandRecursively(index); });
+    }
+
+    // //TODO(implemnt this in the next version)
+    // if (act) {
+    //   menu.addSeparator();
+    // }
+
+    // if (rows) {
+    //   act = menu.addAction("Export to file");
+    //   // connect(act, &QAction::triggered, this,
+    //   //         [&]() { ui->treeView->expandRecursively(index, -1); });
+    // }
+  }
+
+  if (!nodeIsContainer) {
+    act = menu.addAction("Copy Key");
+    act = menu.addAction("Copy Value");
+  }
+}
+
+void MainWindow::collapseRecursively(QTreeView *v, const QModelIndex &root) {
+  static int max_level = 2;
+  v->setExpanded(root, false);
+
+  const int rows = m_jsonTreeModel->rowCount(root);
+  for (int r = 0; r < rows; ++r) {
+    auto idx = m_jsonTreeModel->index(r, 0, root);
+    collapseRecursively(v, idx);
+  }
+}
+
+void MainWindow::expandRecursively(QTreeView *v, const QModelIndex &root,
+                                   int lev) {
+  static int max_level = 2;
+  if (lev > max_level) return;
+  v->setExpanded(root, true);
+
+  const int rows = m_jsonTreeModel->rowCount(root);
+  for (int r = 0; r < rows; ++r) {
+    auto idx = m_jsonTreeModel->index(r, 0, root);
+    expandRecursively(v, idx, lev + 1);
+  }
 }

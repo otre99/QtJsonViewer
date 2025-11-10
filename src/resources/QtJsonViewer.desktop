@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=QtJsonViewer
+Exec=QtJsonViewer
+Icon=QtJsonViewer
+Categories=Development;

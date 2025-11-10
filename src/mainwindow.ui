@@ -507,7 +507,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Show node info</string>
+    <string>Show side panel</string>
    </property>
    <property name="toolTip">
     <string>Show left panel</string>
