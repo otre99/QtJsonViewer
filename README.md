@@ -63,21 +63,7 @@ git clone https://github.com/otre99/QtJsonViewer
 cd QtJsonViewer/src
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
-cmake --install build --prefix ../AppBinaries/build_linux
 ```
-
-Open `QtJsonViewer/src/CMakeLists.txt` in Qt Creator if you would rather let the IDE generate your build directory.
-
-To create the distributable AppImage used in releases:
-
-```bash
-cd QtJsonViewer
-./deploy_app_linux.sh   # requires linuxdeploy + Qt plugin on PATH
-```
-
-The script builds a release binary under `AppBinaries/build_linux/` and then bundles it (plus Qt runtime) into `QtJsonViewer-x86_64.AppImage`.
-
-
 
 ## Usage
 
@@ -88,8 +74,6 @@ The script builds a release binary under `AppBinaries/build_linux/` and then bun
 chmod +x QtJsonViewer-x86_64.AppImage
 ./QtJsonViewer-x86_64.AppImage huge.json
 ```
-
-
 
 ## Contributing
 
