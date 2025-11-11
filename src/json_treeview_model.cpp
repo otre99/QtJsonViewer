@@ -112,7 +112,7 @@ QVariant JsonTreeViewModel::data(const QModelIndex &idx, int role) const {
     case Qt::DisplayRole:
       return is_key_col
                  ? QString::fromStdString(m_fastJsonTree.key(n_idx) + ":")
-                 : m_fastJsonTree.value(n_idx);
+                 : QString::fromStdString(m_fastJsonTree.valueAsStr(n_idx));
 
     case Qt::ForegroundRole: {
       if (is_key_col) {
@@ -204,7 +204,7 @@ QString JsonTreeViewModel::nodeValueStr(const QModelIndex &idx) const {
     case NodeType::Str:
       return m_fastJsonTree.value(n).toString();
     case NodeType::Num:
-      return QString("%1").arg(m_fastJsonTree.value(n).toDouble());
+      return QString::number(m_fastJsonTree.value(n).toDouble(), 'g', 12);
     case NodeType::Bool:
       return QString("%1").arg(m_fastJsonTree.value(n).toBool());
     default:
