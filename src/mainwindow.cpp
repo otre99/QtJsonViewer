@@ -40,13 +40,6 @@ MainWindow::MainWindow(QWidget *parent)
       m_searchListModel = new ListViewSearchModel(m_jsonTreeModel, this));
   ui->listViewSearch->setAlternatingRowColors(true);
 
-  // util tools
-  connect(ui->actionNode_info, &QAction::toggled, ui->dockWidgetInfo,
-          &QDockWidget::setVisible);
-  connect(ui->dockWidgetInfo, &QDockWidget::visibilityChanged,
-          ui->actionNode_info, &QAction::setChecked);
-  // ui->dockWidgetInfo->setVisible(false);
-
   // set the font size for models
   m_jsonTreeModel->setFontSize(m_currentPt);
   m_searchListModel->setFontSize(m_currentPt);
@@ -86,7 +79,9 @@ void MainWindow::loadJsonFile(const QString &jsonFilePath) {
   m_jsonTreeModel->populateFromJson(jsonFilePath);
   addToRecentFiles(jsonFilePath);
 
-  ui->statusbar->showMessage("File: " + jsonFilePath);
+  // QFont fm = font();
+  const QString fileName = QFileInfo(jsonFilePath).fileName().toUpper();
+  setWindowTitle(QString("QJsonViewer [ %1 ]").arg(fileName));
   clearCurrentNodeInfo();
   QApplication::restoreOverrideCursor();
 }
@@ -108,13 +103,6 @@ void MainWindow::on_treeView_clicked(const QModelIndex &index) {
     ui->leNodeKey->setText(m_jsonTreeModel->nodeKey(index));
     ui->leNodePath->setText(m_jsonTreeModel->nodePath(index));
     ui->leNodeValue->setPlainText(m_jsonTreeModel->nodeValueStr(index));
-
-    // int rows = m_jsonTreeModel->rowCount(index);
-    // if (rows >= 0) {
-    //   ui->lineEditChildrenCount->setText(QString("%1").arg(rows));
-    // } else {
-    //   ui->lineEditChildrenCount->setText("---");
-    // }
 
     switch (m_jsonTreeModel->nodeType(index)) {
       case NodeType::Array: {

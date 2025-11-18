@@ -82,14 +82,13 @@
     </property>
     <addaction name="actionZoom_In"/>
     <addaction name="actionZoom_Out"/>
-    <addaction name="actionNode_info"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
   </widget>
   <widget class="QDockWidget" name="dockWidgetInfo">
    <property name="features">
-    <set>QDockWidget::DockWidgetFeature::DockWidgetClosable|QDockWidget::DockWidgetFeature::DockWidgetFloatable</set>
+    <set>QDockWidget::DockWidgetFeature::DockWidgetFloatable</set>
    </property>
    <attribute name="dockWidgetArea">
     <number>1</number>
@@ -500,22 +499,6 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+-</string>
-   </property>
-  </action>
-  <action name="actionNode_info">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Show side panel</string>
-   </property>
-   <property name="toolTip">
-    <string>Show left panel</string>
-   </property>
-  </action>
-  <action name="actionnnmn">
-   <property name="text">
-    <string>nnmn</string>
    </property>
   </action>
  </widget>
