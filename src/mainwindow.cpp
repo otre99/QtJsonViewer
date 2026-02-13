@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 
+#include <QClipboard>
 #include <QFileDialog>
 #include <QJsonObject>
 #include <QMessageBox>
@@ -39,6 +40,8 @@ MainWindow::MainWindow(QWidget *parent)
   ui->listViewSearch->setModel(
       m_searchListModel = new ListViewSearchModel(m_jsonTreeModel, this));
   ui->listViewSearch->setAlternatingRowColors(true);
+  connect(ui->lineEditSearchText, &QLineEdit::returnPressed,
+          ui->pushButtonSearch, &QPushButton::click);
 
   // set the font size for models
   m_jsonTreeModel->setFontSize(m_currentPt);
@@ -83,6 +86,8 @@ void MainWindow::loadJsonFile(const QString &jsonFilePath) {
   const QString fileName = QFileInfo(jsonFilePath).fileName().toUpper();
   setWindowTitle(QString("QJsonViewer [ %1 ]").arg(fileName));
   clearCurrentNodeInfo();
+  m_searchListModel->clear();
+  ui->lineEditSearchText->clear();
   QApplication::restoreOverrideCursor();
 }
 
@@ -321,7 +326,18 @@ void MainWindow::setupTreeViewMenu(QMenu &menu, const QModelIndex &index) {
 
   if (!nodeIsContainer) {
     act = menu.addAction("Copy Key");
+    connect(act, &QAction::triggered, this, [&]() {
+      QString key_text = m_jsonTreeModel->nodeKey(index);
+      QClipboard *clipboard = QGuiApplication::clipboard();
+      clipboard->setText(key_text);
+    });
+
     act = menu.addAction("Copy Value");
+    connect(act, &QAction::triggered, this, [&]() {
+      QString key_text = m_jsonTreeModel->nodeValueStr(index);
+      QClipboard *clipboard = QGuiApplication::clipboard();
+      clipboard->setText(key_text);
+    });
   }
 }
 

@@ -502,6 +502,20 @@
    </property>
   </action>
  </widget>
+ <tabstops>
+  <tabstop>lineEditSearchText</tabstop>
+  <tabstop>pushButtonSearch</tabstop>
+  <tabstop>checkBoxValueCS</tabstop>
+  <tabstop>comboBoxSearchMode</tabstop>
+  <tabstop>comboBoxBoolTF</tabstop>
+  <tabstop>treeView</tabstop>
+  <tabstop>checkBoxValueWW</tabstop>
+  <tabstop>listViewSearch</tabstop>
+  <tabstop>leNodePath</tabstop>
+  <tabstop>leNodeKey</tabstop>
+  <tabstop>leNodeValue</tabstop>
+  <tabstop>lineEditNodeType</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>
