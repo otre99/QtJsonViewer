@@ -51,20 +51,20 @@ void FastJsonTree::buildTree(const Document *doc) {
 
   qDebug() << " No. nodes: " << m_parentPosition.size() << "nodes";
   qDebug() << " Str nodes: " << m_nodeStringValueTable.size();
-  qDebug() << " Num + Bool + Null nodes: "
-           << m_parentPosition.size() - m_nodeStringValueTable.size();
+  qDebug() << " Num + Bool + Null nodes: " << m_parentPosition.size() - m_nodeStringValueTable.size();
   qDebug() << "Unique keys: " << m_nodeKeyTable.size() << "nodes";
 }
 
 string FastJsonTree::key(quint32 n) const {
-  if (n == 0) return "<root>";
+  if (n == 0)
+    return "<root>";
   quint32 pn_idx = parent(n);
 
   switch (type(pn_idx)) {
-    case NodeType::Array:
-      return format("[{}]", rowInParent(n));
-    default:
-      return m_nodeKeyTable[m_nodeKeyPos[n]];
+  case NodeType::Array:
+    return format("[{}]", rowInParent(n));
+  default:
+    return m_nodeKeyTable[m_nodeKeyPos[n]];
   }
 }
 
@@ -72,35 +72,35 @@ QVariant FastJsonTree::value(quint32 n) const {
   NodeType t = type(n);
 
   switch (t) {
-    case NodeType::Array:
-      return rows(n) ? "[...]" : "[]";
-    case NodeType::Object:
-      return rows(n) ? "{...}" : "{}";
-    case NodeType::Num:
-      return m_nodeValueOrPos[n].num;
-    case NodeType::Bool:
-      return bool(m_nodeValueOrPos[n].index);
-    case NodeType::Str:
-      return m_nodeStringValueTable[m_nodeValueOrPos[n].index].c_str();
-    case NodeType::Null:
-      return "null";
+  case NodeType::Array:
+    return rows(n) ? "[...]" : "[]";
+  case NodeType::Object:
+    return rows(n) ? "{...}" : "{}";
+  case NodeType::Num:
+    return m_nodeValueOrPos[n].num;
+  case NodeType::Bool:
+    return bool(m_nodeValueOrPos[n].index);
+  case NodeType::Str:
+    return m_nodeStringValueTable[m_nodeValueOrPos[n].index].c_str();
+  case NodeType::Null:
+    return "null";
   }
 }
 
 string FastJsonTree::valueAsStr(quint32 n) const {
   switch (type(n)) {
-    case NodeType::Array:
-      return rows(n) ? "[...]" : "[]";
-    case NodeType::Object:
-      return rows(n) ? "{...}" : "{}";
-    case NodeType::Num:
-      return format("{}", m_nodeValueOrPos[n].num);
-    case NodeType::Bool:
-      return m_nodeValueOrPos[n].index ? "true" : "false";
-    case NodeType::Str:
-      return m_nodeStringValueTable[m_nodeValueOrPos[n].index];
-    case NodeType::Null:
-      return "null";
+  case NodeType::Array:
+    return rows(n) ? "[...]" : "[]";
+  case NodeType::Object:
+    return rows(n) ? "{...}" : "{}";
+  case NodeType::Num:
+    return format("{}", m_nodeValueOrPos[n].num);
+  case NodeType::Bool:
+    return m_nodeValueOrPos[n].index ? "true" : "false";
+  case NodeType::Str:
+    return m_nodeStringValueTable[m_nodeValueOrPos[n].index];
+  case NodeType::Null:
+    return "null";
   }
 }
 
@@ -108,29 +108,37 @@ string FastJsonTree::nodePreview(quint32 n) const {
   string k = key(n);
   string v = valueAsStr(n);
   switch (type(n)) {
-    case NodeType::Array:
-    case NodeType::Object:
-    case NodeType::Num:
-    case NodeType::Bool:
-    case NodeType::Null: {
-      return format("\"{}\": {}", k, v);
+  case NodeType::Array:
+  case NodeType::Object:
+  case NodeType::Num:
+  case NodeType::Bool:
+  case NodeType::Null: {
+    return format("\"{}\": {}", k, v);
+  }
+  case NodeType::Str: {
+    if (v.size() > 64) {
+      v = v.substr(0, 60) + "...";
     }
-    case NodeType::Str: {
-      if (v.size() > 64) {
-        v = v.substr(0, 60) + "...";
-      }
-      return format("\"{}\": \"{}\"", k, v);
-    }
+    return format("\"{}\": \"{}\"", k, v);
+  }
   }
 }
 
-quint32 FastJsonTree::parent(quint32 n) const { return m_parentPosition[n]; }
-quint32 FastJsonTree::rows(quint32 n) const { return m_childCount[n]; }
+quint32 FastJsonTree::parent(quint32 n) const {
+  return m_parentPosition[n];
+}
+quint32 FastJsonTree::rows(quint32 n) const {
+  return m_childCount[n];
+}
 quint32 FastJsonTree::firstChild(quint32 n) const {
   return m_firstChildPosition[n];
 }
-quint32 FastJsonTree::rowInParent(quint32 n) const { return m_rowInParent[n]; }
-NodeType FastJsonTree::type(quint32 n) const { return m_nodeType[n]; }
+quint32 FastJsonTree::rowInParent(quint32 n) const {
+  return m_rowInParent[n];
+}
+NodeType FastJsonTree::type(quint32 n) const {
+  return m_nodeType[n];
+}
 
 string FastJsonTree::nodePath(quint32 n) const {
   quint32 idx = n;
@@ -150,7 +158,9 @@ string FastJsonTree::nodePath(quint32 n) const {
   return result;
 }
 
-quint32 FastJsonTree::nodesCount() const { return m_parentPosition.size(); }
+quint32 FastJsonTree::nodesCount() const {
+  return m_parentPosition.size();
+}
 
 void FastJsonTree::clear() {
   m_parentPosition.clear();
@@ -165,13 +175,13 @@ void FastJsonTree::clear() {
   m_currentKeyPos = 0;
 }
 
-bool FastJsonTree::isEmpty() const { return /*true*/ m_parentPosition.empty(); }
+bool FastJsonTree::isEmpty() const {
+  return /*true*/ m_parentPosition.empty();
+}
 
-quint32 FastJsonTree::_buildTreeRecursive(const RJVal *jsonValue,
-                                          const quint32 parentIndex) {
+quint32 FastJsonTree::_buildTreeRecursive(const RJVal *jsonValue, const quint32 parentIndex) {
   const quint32 firstChildPosition = m_parentPosition.size();
-  const quint32 childrenCount =
-      jsonValue->IsArray() ? jsonValue->Size() : jsonValue->MemberCount();
+  const quint32 childrenCount = jsonValue->IsArray() ? jsonValue->Size() : jsonValue->MemberCount();
 
   if (childrenCount) {
     m_parentPosition.resize(firstChildPosition + childrenCount);
@@ -206,8 +216,7 @@ quint32 FastJsonTree::_buildTreeRecursive(const RJVal *jsonValue,
       ++row;
     }
   } else {
-    for (auto it = jsonValue->MemberBegin(); it != jsonValue->MemberEnd();
-         ++it) {
+    for (auto it = jsonValue->MemberBegin(); it != jsonValue->MemberEnd(); ++it) {
       const quint32 idx = firstChildPosition + row;
       const auto &m = *it;
       const char *k = m.name.GetString();
@@ -249,30 +258,30 @@ quint32 FastJsonTree::_addKeyAndGetPos(const string &key) {
 
 NodeType FastJsonTree::_typeFromJson(const RJVal &value, Data &d) {
   switch (value.GetType()) {
-    case rapidjson::kNullType:
-      return NodeType::Null;
+  case rapidjson::kNullType:
+    return NodeType::Null;
 
-    case rapidjson::kFalseType:
-    case rapidjson::kTrueType: {
-      d.index = value.GetBool();
-      return NodeType::Bool;
-    }
+  case rapidjson::kFalseType:
+  case rapidjson::kTrueType: {
+    d.index = value.GetBool();
+    return NodeType::Bool;
+  }
 
-    case rapidjson::kStringType: {
-      m_nodeStringValueTable.push_back(value.GetString());
-      d.index = m_nodeStringValueTable.size() - 1;
-      return NodeType::Str;
-    }
+  case rapidjson::kStringType: {
+    m_nodeStringValueTable.push_back(value.GetString());
+    d.index = m_nodeStringValueTable.size() - 1;
+    return NodeType::Str;
+  }
 
-    case rapidjson::kNumberType: {
-      d.num = value.GetDouble();
-      return NodeType::Num;
-    }
+  case rapidjson::kNumberType: {
+    d.num = value.GetDouble();
+    return NodeType::Num;
+  }
 
-    case rapidjson::kObjectType:
-      return NodeType::Object;
+  case rapidjson::kObjectType:
+    return NodeType::Object;
 
-    case rapidjson::kArrayType:
-      return NodeType::Array;
+  case rapidjson::kArrayType:
+    return NodeType::Array;
   }
 }

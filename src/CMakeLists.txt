@@ -10,6 +10,8 @@ find_package(Qt6 REQUIRED COMPONENTS Core)
 
 qt_standard_project_setup()
 
+include_directories(./)
+
 qt_add_executable(QtJsonViewer
     WIN32 MACOSX_BUNDLE
     main.cpp
@@ -27,8 +29,12 @@ target_link_libraries(QtJsonViewer
         Qt::Core
         Qt::Widgets
 )
+
+
+
 target_link_libraries(QtJsonViewer PRIVATE Qt6::Core tbb)
 target_link_libraries(QtJsonViewer PRIVATE Qt6::Core)
+
 
 include(GNUInstallDirs)
 

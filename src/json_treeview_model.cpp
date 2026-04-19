@@ -17,8 +17,7 @@
 using rapidjson::Document;
 using rapidjson::IStreamWrapper;
 
-JsonTreeViewModel::JsonTreeViewModel(QObject *parent)
-    : QAbstractItemModel(parent) {
+JsonTreeViewModel::JsonTreeViewModel(QObject *parent) : QAbstractItemModel(parent) {
   m_baseFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
 
   B.key = QColor(0, 87, 174);
@@ -31,6 +30,8 @@ JsonTreeViewModel::JsonTreeViewModel(QObject *parent)
 }
 
 bool JsonTreeViewModel::populateFromJson(const QString jsonFilePath) {
+
+  auto t1 = std::chrono::steady_clock::now();
   auto utf8_path = jsonFilePath.toUtf8();
   std::ifstream ifs(utf8_path.constData(), std::ios::binary);
   if (!ifs.is_open()) {
@@ -52,15 +53,20 @@ bool JsonTreeViewModel::populateFromJson(const QString jsonFilePath) {
   m_fastJsonTree.buildTree(&doc);
 
   endResetModel();
+  auto t2 = std::chrono::steady_clock::now();
+  auto d = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+  qDebug() << "Loading JSON time " << d << " ms";
   return true;
 }
 
-JsonTreeViewModel::~JsonTreeViewModel() { m_fastJsonTree.clear(); }
+JsonTreeViewModel::~JsonTreeViewModel() {
+  m_fastJsonTree.clear();
+}
 
-QModelIndex JsonTreeViewModel::index(int row, int column,
-                                     const QModelIndex &parentIdx) const {
+QModelIndex JsonTreeViewModel::index(int row, int column, const QModelIndex &parentIdx) const {
   // qDebug() << "index()" << row << column << parentIdx;
-  if (column < 0 || row < 0 || m_fastJsonTree.isEmpty()) return {};
+  if (column < 0 || row < 0 || m_fastJsonTree.isEmpty())
+    return {};
   if (!parentIdx.isValid()) {
     return createIndex(row, column, static_cast<quintptr>(0));
   }
@@ -71,21 +77,22 @@ QModelIndex JsonTreeViewModel::index(int row, int column,
 
 QModelIndex JsonTreeViewModel::parent(const QModelIndex &childIdx) const {
   // qDebug() << "parent()" << childIdx;
-  if (!childIdx.isValid()) return {};
+  if (!childIdx.isValid())
+    return {};
 
   quint32 cn_idx = nodeFromIndex(childIdx);
   quint32 pn_idx = m_fastJsonTree.parent(cn_idx);
 
-  if (pn_idx == MAX_U32) {  // root node
-    return QModelIndex();   // root node has invalid parent
+  if (pn_idx == MAX_U32) { // root node
+    return QModelIndex();  // root node has invalid parent
   }
-  return createIndex(m_fastJsonTree.rowInParent(pn_idx), 0,
-                     static_cast<quintptr>(pn_idx));
+  return createIndex(m_fastJsonTree.rowInParent(pn_idx), 0, static_cast<quintptr>(pn_idx));
 }
 
 int JsonTreeViewModel::rowCount(const QModelIndex &parentIndex) const {
   // qDebug() << "rowCount()" << parentIndex;
-  if (m_fastJsonTree.isEmpty()) return 0;
+  if (m_fastJsonTree.isEmpty())
+    return 0;
 
   quint32 pn_idx = nodeFromIndex(parentIndex);
   if (pn_idx == MAX_U32) {
@@ -101,7 +108,8 @@ int JsonTreeViewModel::columnCount(const QModelIndex &parentIndex) const {
 QVariant JsonTreeViewModel::data(const QModelIndex &idx, int role) const {
   // qDebug() << "data" << idx << role;
 
-  if (!idx.isValid()) return {};
+  if (!idx.isValid())
+    return {};
 
   const quint32 n_idx = nodeFromIndex(idx);
   // qDebug() << "data()" << n_idx << m_fastJsonTree.key(n_idx) <<
@@ -109,62 +117,62 @@ QVariant JsonTreeViewModel::data(const QModelIndex &idx, int role) const {
   const bool is_key_col = (idx.column() == 0);
 
   switch (role) {
-    case Qt::DisplayRole:
-      return is_key_col
-                 ? QString::fromStdString(m_fastJsonTree.key(n_idx) + ":")
-                 : QString::fromStdString(m_fastJsonTree.valueAsStr(n_idx));
+  case Qt::DisplayRole:
+    return is_key_col ? QString::fromStdString(m_fastJsonTree.key(n_idx) + ":")
+                      : QString::fromStdString(m_fastJsonTree.valueAsStr(n_idx));
 
-    case Qt::ForegroundRole: {
-      if (is_key_col) {
-        return B.key;
-      } else {
-        switch (m_fastJsonTree.type(n_idx)) {
-          case NodeType::Str:
-            return B.str;
-          case NodeType::Num:
-            return B.num;
-          case NodeType::Bool:
-            return B.boolean;
-          case NodeType::Null:
-            return B.nullish;
-          case NodeType::Object:
-            return B.containerObject;
-          case NodeType::Array:
-            return B.containerArray;
-        }
+  case Qt::ForegroundRole: {
+    if (is_key_col) {
+      return B.key;
+    } else {
+      switch (m_fastJsonTree.type(n_idx)) {
+      case NodeType::Str:
+        return B.str;
+      case NodeType::Num:
+        return B.num;
+      case NodeType::Bool:
+        return B.boolean;
+      case NodeType::Null:
+        return B.nullish;
+      case NodeType::Object:
+        return B.containerObject;
+      case NodeType::Array:
+        return B.containerArray;
       }
     }
+  }
 
-    case Qt::FontRole: {
-      if (is_key_col) {
-        return m_baseFont;
-      } else {
-        QFont f = m_baseFont;
-        switch (m_fastJsonTree.type(n_idx)) {
-          case NodeType::Null: {
-            f.setItalic(true);
-            f.setBold(true);
-            break;
-          }
-          case NodeType::Bool: {
-            f.setBold(true);
-            break;
-          }
-          default: {
-          }
-        }
-        return f;
+  case Qt::FontRole: {
+    if (is_key_col) {
+      return m_baseFont;
+    } else {
+      QFont f = m_baseFont;
+      switch (m_fastJsonTree.type(n_idx)) {
+      case NodeType::Null: {
+        f.setItalic(true);
+        f.setBold(true);
+        break;
       }
+      case NodeType::Bool: {
+        f.setBold(true);
+        break;
+      }
+      default: {
+      }
+      }
+      return f;
     }
+  }
 
-    default:
-      return {};
+  default:
+    return {};
   }
   return {};
 }
 
 Qt::ItemFlags JsonTreeViewModel::flags(const QModelIndex &idx) const {
-  if (!idx.isValid()) return Qt::NoItemFlags;
+  if (!idx.isValid())
+    return Qt::NoItemFlags;
   quint32 n_idx = nodeFromIndex(idx);
 
   Qt::ItemFlags f = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
@@ -174,18 +182,17 @@ Qt::ItemFlags JsonTreeViewModel::flags(const QModelIndex &idx) const {
   return f;
 }
 
-QVariant JsonTreeViewModel::headerData(int section, Qt::Orientation orientation,
-                                       int role) const {
+QVariant JsonTreeViewModel::headerData(int section, Qt::Orientation orientation, int role) const {
   switch (role) {
-    case Qt::DisplayRole: {
-      if (section == 0)
-        return "Key";
-      else
-        return "Value";
-    }
-    default:
-      return {};
-      break;
+  case Qt::DisplayRole: {
+    if (section == 0)
+      return "Key";
+    else
+      return "Value";
+  }
+  default:
+    return {};
+    break;
   }
 }
 
@@ -199,16 +206,16 @@ QString JsonTreeViewModel::nodeKey(const QModelIndex &idx) const {
 QString JsonTreeViewModel::nodeValueStr(const QModelIndex &idx) const {
   quint32 n = nodeFromIndex(idx);
   switch (m_fastJsonTree.type(n)) {
-    case NodeType::Array:
-    case NodeType::Object:
-    case NodeType::Str:
-      return m_fastJsonTree.value(n).toString();
-    case NodeType::Num:
-      return QString::number(m_fastJsonTree.value(n).toDouble(), 'g', 12);
-    case NodeType::Bool:
-      return QString("%1").arg(m_fastJsonTree.value(n).toBool());
-    default:
-      return "null";
+  case NodeType::Array:
+  case NodeType::Object:
+  case NodeType::Str:
+    return m_fastJsonTree.value(n).toString();
+  case NodeType::Num:
+    return QString::number(m_fastJsonTree.value(n).toDouble(), 'g', 12);
+  case NodeType::Bool:
+    return QString("%1").arg(m_fastJsonTree.value(n).toBool());
+  default:
+    return "null";
   }
 }
 
@@ -219,16 +226,17 @@ NodeType JsonTreeViewModel::nodeType(const QModelIndex &idx) const {
 quint32 JsonTreeViewModel::subTreeNodesCount(const QModelIndex &idx) const {
   quint32 n = nodeFromIndex(idx);
   switch (m_fastJsonTree.type(n)) {
-    case NodeType::Array:
-    case NodeType::Object:
-      return m_fastJsonTree.m_nodeValueOrPos[n].index;
-    default:
-      return 0;
+  case NodeType::Array:
+  case NodeType::Object:
+    return m_fastJsonTree.m_nodeValueOrPos[n].index;
+  default:
+    return 0;
   }
 }
 
 quint32 JsonTreeViewModel::nodeFromIndex(const QModelIndex &idx) const {
-  if (!idx.isValid()) return MAX_U32;
+  if (!idx.isValid())
+    return MAX_U32;
   return static_cast<quint32>(idx.internalId());
 }
 
