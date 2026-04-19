@@ -3,7 +3,7 @@
 ![QtJsonViewer screenshot](./assets/app_screeshop.png)
 
 QtJsonViewer is a fast, dependency-light **desktop viewer for massive JSON documents** built with Qt 6.  
-It uses a custom `FastJsonTree` (backed by RapidJSON) plus parallel search to keep navigation snappy even on multi‑MB payloads.  
+It uses a custom `FastJsonTree` (backed by simdjson) plus parallel search to keep navigation snappy even on multi‑MB payloads.  
 The goal is to provide an intuitive desktop tool for developers who routinely inspect large API responses, logs, or dataset manifests.
 
 - Color-coded tree view keeps keys, scalars, and containers easy to scan  
@@ -29,7 +29,7 @@ The goal is to provide an intuitive desktop tool for developers who routinely in
 
 ## Features
 
-- **High-performance parsing**: RapidJSON streams directly into the in-memory `FastJsonTree`, keeping allocations compact with a large pre-allocation buffer.  
+- **High-performance parsing**: simdjson validates and parses the file before the app materializes it into the in-memory `FastJsonTree`, keeping large documents responsive.  
 - **Parallel filtering**: Search leverages `<execution>` with Intel TBB so numeric/string lookups stay responsive on deep documents.  
 - **Rich previews**: Every result row shows a concise preview (type-aware) before you jump back into the tree.  
 - **Smart formatting**: Keys use monospace fonts and deterministic coloring, while scalar fonts highlight booleans/nulls for instant recognition.  
@@ -50,7 +50,7 @@ See the [LICENSE](LICENSE) file for the full text.
 - **Qt 6.5+** (tested with 6.9) with the Widgets module  
 - **CMake 3.19+**  
 - A **C++20** compiler (GCC, Clang, or MSVC)  
-- **RapidJSON** headers available on the include path  
+- **simdjson** available either as a system package or fetched automatically by CMake on first configure  
 - **Intel TBB** (or an equivalent parallel STL backend) for the search model  
 - Qt build tools such as `qt-cmake` / `Qt Creator` if you prefer the IDE workflow
 
@@ -84,6 +84,6 @@ Please open an issue for bugs/ideas or send a pull request with improvements.
 
 ## Acknowledgements
  - Built with Qt 6 (Fusion style, Widgets stack)
- - JSON parsing via RapidJSON
+ - JSON parsing via simdjson
  - Parallel search backed by Intel TBB
  - AppImage packaging powered by linuxdeploy and Qt deploy scripts

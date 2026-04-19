@@ -22,21 +22,19 @@ class JsonTreeViewModel : public QAbstractItemModel {
     QBrush containerObject;
   } B;
 
- public:
+public:
   JsonTreeViewModel(QObject *parent);
   ~JsonTreeViewModel();
-  bool populateFromJson(const QString jsonFilePath);
+  bool populateFromJson(const QString jsonFilePath, QString *errorMsg = nullptr);
 
-  QModelIndex index(int row, int column,
-                    const QModelIndex &parent = {}) const override;
+  QModelIndex index(int row, int column, const QModelIndex &parent = {}) const override;
   QModelIndex parent(const QModelIndex &index) const override;
   int rowCount(const QModelIndex &parent = {}) const override;
   int columnCount(const QModelIndex &parentIndex = {}) const override;
   QVariant data(const QModelIndex &index, int role) const override;
 
   Qt::ItemFlags flags(const QModelIndex &index) const override;
-  QVariant headerData(int section, Qt::Orientation orientation,
-                      int role = Qt::DisplayRole) const override;
+  QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
 
   QString nodePath(const QModelIndex &idx) const;
   QString nodeKey(const QModelIndex &idx) const;
@@ -44,15 +42,15 @@ class JsonTreeViewModel : public QAbstractItemModel {
   NodeType nodeType(const QModelIndex &idx) const;
   quint32 subTreeNodesCount(const QModelIndex &idx) const;
 
- signals:
+signals:
 
- public slots:
+public slots:
   void setFontSize(const double pt);
 
- private:
+private:
   quint32 nodeFromIndex(const QModelIndex &idx) const;
   QFont m_baseFont;
   FastJsonTree m_fastJsonTree;
 };
 
-#endif  // JSON_TREEVIEW_MODEL_H
+#endif // JSON_TREEVIEW_MODEL_H

@@ -7,6 +7,7 @@
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QProgressDialog>
+#include <format>
 
 FastJsonTree::FastJsonTree() {
   m_parentPosition.reserve(PREALLOCATION_SIZE);
@@ -22,7 +23,7 @@ FastJsonTree::FastJsonTree() {
   m_nodeKeyTable.clear();
 }
 
-void FastJsonTree::buildTree(const Document *doc) {
+void FastJsonTree::buildTree(const SimdJsonElement &doc) {
   clear();
 
   m_parentPosition.push_back(MAX_U32);
@@ -32,11 +33,14 @@ void FastJsonTree::buildTree(const Document *doc) {
   m_nodeKeyPos.push_back(MAX_U32);
   m_nodeValueOrPos.push_back({});
 
-  if (doc->IsArray()) {
+  const auto docType = doc.type();
+  if (docType == simdjson::dom::element_type::ARRAY) {
     m_nodeType.push_back(NodeType::Array);
-  } else if (doc->IsObject()) {
+  }
+  else if (docType == simdjson::dom::element_type::OBJECT) {
     m_nodeType.push_back(NodeType::Object);
-  } else {
+  }
+  else {
     clear();
     return;
   }
@@ -51,20 +55,20 @@ void FastJsonTree::buildTree(const Document *doc) {
 
   qDebug() << " No. nodes: " << m_parentPosition.size() << "nodes";
   qDebug() << " Str nodes: " << m_nodeStringValueTable.size();
-  qDebug() << " Num + Bool + Null nodes: "
-           << m_parentPosition.size() - m_nodeStringValueTable.size();
+  qDebug() << " Num + Bool + Null nodes: " << m_parentPosition.size() - m_nodeStringValueTable.size();
   qDebug() << "Unique keys: " << m_nodeKeyTable.size() << "nodes";
 }
 
 string FastJsonTree::key(quint32 n) const {
-  if (n == 0) return "<root>";
+  if (n == 0)
+    return "<root>";
   quint32 pn_idx = parent(n);
 
   switch (type(pn_idx)) {
-    case NodeType::Array:
-      return format("[{}]", rowInParent(n));
-    default:
-      return m_nodeKeyTable[m_nodeKeyPos[n]];
+  case NodeType::Array:
+    return format("[{}]", rowInParent(n));
+  default:
+    return m_nodeKeyTable[m_nodeKeyPos[n]];
   }
 }
 
@@ -72,35 +76,35 @@ QVariant FastJsonTree::value(quint32 n) const {
   NodeType t = type(n);
 
   switch (t) {
-    case NodeType::Array:
-      return rows(n) ? "[...]" : "[]";
-    case NodeType::Object:
-      return rows(n) ? "{...}" : "{}";
-    case NodeType::Num:
-      return m_nodeValueOrPos[n].num;
-    case NodeType::Bool:
-      return bool(m_nodeValueOrPos[n].index);
-    case NodeType::Str:
-      return m_nodeStringValueTable[m_nodeValueOrPos[n].index].c_str();
-    case NodeType::Null:
-      return "null";
+  case NodeType::Array:
+    return rows(n) ? "[...]" : "[]";
+  case NodeType::Object:
+    return rows(n) ? "{...}" : "{}";
+  case NodeType::Num:
+    return m_nodeValueOrPos[n].num;
+  case NodeType::Bool:
+    return bool(m_nodeValueOrPos[n].index);
+  case NodeType::Str:
+    return m_nodeStringValueTable[m_nodeValueOrPos[n].index].c_str();
+  case NodeType::Null:
+    return "null";
   }
 }
 
 string FastJsonTree::valueAsStr(quint32 n) const {
   switch (type(n)) {
-    case NodeType::Array:
-      return rows(n) ? "[...]" : "[]";
-    case NodeType::Object:
-      return rows(n) ? "{...}" : "{}";
-    case NodeType::Num:
-      return format("{}", m_nodeValueOrPos[n].num);
-    case NodeType::Bool:
-      return m_nodeValueOrPos[n].index ? "true" : "false";
-    case NodeType::Str:
-      return m_nodeStringValueTable[m_nodeValueOrPos[n].index];
-    case NodeType::Null:
-      return "null";
+  case NodeType::Array:
+    return rows(n) ? "[...]" : "[]";
+  case NodeType::Object:
+    return rows(n) ? "{...}" : "{}";
+  case NodeType::Num:
+    return format("{}", m_nodeValueOrPos[n].num);
+  case NodeType::Bool:
+    return m_nodeValueOrPos[n].index ? "true" : "false";
+  case NodeType::Str:
+    return m_nodeStringValueTable[m_nodeValueOrPos[n].index];
+  case NodeType::Null:
+    return "null";
   }
 }
 
@@ -108,29 +112,37 @@ string FastJsonTree::nodePreview(quint32 n) const {
   string k = key(n);
   string v = valueAsStr(n);
   switch (type(n)) {
-    case NodeType::Array:
-    case NodeType::Object:
-    case NodeType::Num:
-    case NodeType::Bool:
-    case NodeType::Null: {
-      return format("\"{}\": {}", k, v);
+  case NodeType::Array:
+  case NodeType::Object:
+  case NodeType::Num:
+  case NodeType::Bool:
+  case NodeType::Null: {
+    return format("\"{}\": {}", k, v);
+  }
+  case NodeType::Str: {
+    if (v.size() > 64) {
+      v = v.substr(0, 60) + "...";
     }
-    case NodeType::Str: {
-      if (v.size() > 64) {
-        v = v.substr(0, 60) + "...";
-      }
-      return format("\"{}\": \"{}\"", k, v);
-    }
+    return format("\"{}\": \"{}\"", k, v);
+  }
   }
 }
 
-quint32 FastJsonTree::parent(quint32 n) const { return m_parentPosition[n]; }
-quint32 FastJsonTree::rows(quint32 n) const { return m_childCount[n]; }
+quint32 FastJsonTree::parent(quint32 n) const {
+  return m_parentPosition[n];
+}
+quint32 FastJsonTree::rows(quint32 n) const {
+  return m_childCount[n];
+}
 quint32 FastJsonTree::firstChild(quint32 n) const {
   return m_firstChildPosition[n];
 }
-quint32 FastJsonTree::rowInParent(quint32 n) const { return m_rowInParent[n]; }
-NodeType FastJsonTree::type(quint32 n) const { return m_nodeType[n]; }
+quint32 FastJsonTree::rowInParent(quint32 n) const {
+  return m_rowInParent[n];
+}
+NodeType FastJsonTree::type(quint32 n) const {
+  return m_nodeType[n];
+}
 
 string FastJsonTree::nodePath(quint32 n) const {
   quint32 idx = n;
@@ -138,7 +150,8 @@ string FastJsonTree::nodePath(quint32 n) const {
   while ((idx = parent(n)) != MAX_U32) {
     if (type(idx) == NodeType::Array) {
       pathParts.push_back(key(n));
-    } else {
+    }
+    else {
       pathParts.push_back(format("[\"{}\"]", key(n)));
     }
     n = idx;
@@ -150,7 +163,9 @@ string FastJsonTree::nodePath(quint32 n) const {
   return result;
 }
 
-quint32 FastJsonTree::nodesCount() const { return m_parentPosition.size(); }
+quint32 FastJsonTree::nodesCount() const {
+  return m_parentPosition.size();
+}
 
 void FastJsonTree::clear() {
   m_parentPosition.clear();
@@ -165,13 +180,29 @@ void FastJsonTree::clear() {
   m_currentKeyPos = 0;
 }
 
-bool FastJsonTree::isEmpty() const { return /*true*/ m_parentPosition.empty(); }
+bool FastJsonTree::isEmpty() const {
+  return /*true*/ m_parentPosition.empty();
+}
 
-quint32 FastJsonTree::_buildTreeRecursive(const RJVal *jsonValue,
-                                          const quint32 parentIndex) {
+quint32 FastJsonTree::_buildTreeRecursive(const SimdJsonElement &jsonValue, quint32 parentIndex) {
+  const auto jsonType = jsonValue.type();
   const quint32 firstChildPosition = m_parentPosition.size();
-  const quint32 childrenCount =
-      jsonValue->IsArray() ? jsonValue->Size() : jsonValue->MemberCount();
+  quint32 childrenCount = 0;
+
+  if (jsonType == simdjson::dom::element_type::ARRAY) {
+    simdjson::dom::array array;
+    if (jsonValue.get(array)) {
+      return 0;
+    }
+    childrenCount = static_cast<quint32>(array.size());
+  }
+  else {
+    simdjson::dom::object object;
+    if (jsonValue.get(object)) {
+      return 0;
+    }
+    childrenCount = static_cast<quint32>(object.size());
+  }
 
   if (childrenCount) {
     m_parentPosition.resize(firstChildPosition + childrenCount);
@@ -186,9 +217,13 @@ quint32 FastJsonTree::_buildTreeRecursive(const RJVal *jsonValue,
   int child_count = childrenCount;
   quint32 row = 0;
   Data d;
-  if (jsonValue->IsArray()) {
-    for (auto iter = jsonValue->Begin(); iter != jsonValue->End(); ++iter) {
-      const RJVal &val = *iter;
+  if (jsonType == simdjson::dom::element_type::ARRAY) {
+    simdjson::dom::array array;
+    if (jsonValue.get(array)) {
+      return 0;
+    }
+
+    for (const simdjson::dom::element val : array) {
       const quint32 idx = firstChildPosition + row;
       const NodeType type = _typeFromJson(val, d);
 
@@ -201,19 +236,21 @@ quint32 FastJsonTree::_buildTreeRecursive(const RJVal *jsonValue,
       m_nodeValueOrPos[idx] = d;
 
       if (type == NodeType::Array || type == NodeType::Object) {
-        child_count += _buildTreeRecursive(&val, idx);
+        child_count += _buildTreeRecursive(val, idx);
       }
       ++row;
     }
-  } else {
-    for (auto it = jsonValue->MemberBegin(); it != jsonValue->MemberEnd();
-         ++it) {
+  }
+  else {
+    simdjson::dom::object object;
+    if (jsonValue.get(object)) {
+      return 0;
+    }
+
+    for (const simdjson::dom::key_value_pair field : object) {
       const quint32 idx = firstChildPosition + row;
-      const auto &m = *it;
-      const char *k = m.name.GetString();
-      size_t klen = m.name.GetStringLength();
-      const string key(k, klen);
-      const RJVal &val = m.value;
+      const string key(field.key.data(), field.key.size());
+      const SimdJsonElement val = field.value;
 
       const NodeType type = _typeFromJson(val, d);
       const quint32 kIdx = _addKeyAndGetPos(key);
@@ -227,7 +264,7 @@ quint32 FastJsonTree::_buildTreeRecursive(const RJVal *jsonValue,
       m_nodeValueOrPos[idx] = d;
 
       if (type == NodeType::Array || type == NodeType::Object) {
-        child_count += _buildTreeRecursive(&val, idx);
+        child_count += _buildTreeRecursive(val, idx);
       }
       ++row;
     }
@@ -247,32 +284,47 @@ quint32 FastJsonTree::_addKeyAndGetPos(const string &key) {
   return m_currentKeyPos - 1;
 }
 
-NodeType FastJsonTree::_typeFromJson(const RJVal &value, Data &d) {
-  switch (value.GetType()) {
-    case rapidjson::kNullType:
-      return NodeType::Null;
+NodeType FastJsonTree::_typeFromJson(const SimdJsonElement &value, Data &d) {
+  switch (value.type()) {
+  case simdjson::dom::element_type::NULL_VALUE:
+    return NodeType::Null;
 
-    case rapidjson::kFalseType:
-    case rapidjson::kTrueType: {
-      d.index = value.GetBool();
-      return NodeType::Bool;
-    }
-
-    case rapidjson::kStringType: {
-      m_nodeStringValueTable.push_back(value.GetString());
-      d.index = m_nodeStringValueTable.size() - 1;
-      return NodeType::Str;
-    }
-
-    case rapidjson::kNumberType: {
-      d.num = value.GetDouble();
-      return NodeType::Num;
-    }
-
-    case rapidjson::kObjectType:
-      return NodeType::Object;
-
-    case rapidjson::kArrayType:
-      return NodeType::Array;
+  case simdjson::dom::element_type::BOOL: {
+    bool parsed = false;
+    std::ignore = value.get(parsed);
+    d.index = parsed;
+    return NodeType::Bool;
   }
+
+  case simdjson::dom::element_type::STRING: {
+    std::string_view parsed;
+    std::ignore = value.get(parsed);
+    m_nodeStringValueTable.emplace_back(parsed);
+    d.index = m_nodeStringValueTable.size() - 1;
+    return NodeType::Str;
+  }
+
+  case simdjson::dom::element_type::DOUBLE:
+  case simdjson::dom::element_type::UINT64:
+  case simdjson::dom::element_type::INT64: {
+    int64_t parsed = 0;
+    std::ignore = value.get(parsed);
+    d.num = static_cast<double>(parsed);
+    return NodeType::Num;
+  }
+
+  case simdjson::dom::element_type::OBJECT:
+    return NodeType::Object;
+
+  case simdjson::dom::element_type::ARRAY:
+    return NodeType::Array;
+
+  case simdjson::dom::element_type::BIGINT: {
+    qWarning() << "Big integer is parsed as 0";
+    d.num = 0;
+    return NodeType::Num;
+  }
+  }
+
+  return NodeType::Null;
 }

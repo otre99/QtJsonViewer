@@ -5,8 +5,24 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets)
-find_package(Qt6 REQUIRED COMPONENTS Core)
-find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(TBB REQUIRED)
+
+find_package(simdjson CONFIG QUIET)
+if(TARGET simdjson::simdjson AND NOT TARGET simdjson)
+    add_library(simdjson ALIAS simdjson::simdjson)
+endif()
+if(NOT TARGET simdjson)
+    include(FetchContent)
+    set(SIMDJSON_JUST_LIBRARY ON CACHE INTERNAL "")
+    set(SIMDJSON_BUILD_STATIC ON CACHE INTERNAL "")
+    FetchContent_Declare(
+        simdjson
+        GIT_REPOSITORY https://github.com/simdjson/simdjson.git
+        GIT_TAG v4.6.2
+        GIT_SHALLOW TRUE
+    )
+    FetchContent_MakeAvailable(simdjson)
+endif()
 
 qt_standard_project_setup()
 
@@ -26,9 +42,9 @@ target_link_libraries(QtJsonViewer
     PRIVATE
         Qt::Core
         Qt::Widgets
+        simdjson
+        TBB::tbb
 )
-target_link_libraries(QtJsonViewer PRIVATE Qt6::Core tbb)
-target_link_libraries(QtJsonViewer PRIVATE Qt6::Core)
 
 include(GNUInstallDirs)
 

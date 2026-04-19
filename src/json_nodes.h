@@ -1,7 +1,6 @@
 #ifndef JSON_NODES_H
 #define JSON_NODES_H
-#include <rapidjson/document.h>
-#include <rapidjson/istreamwrapper.h>
+#include <simdjson.h>
 
 #include <QJsonValue>
 #include <QString>
@@ -13,9 +12,7 @@ using namespace std;
 constexpr long PREALLOCATION_SIZE = 256000000;
 constexpr quint32 MAX_U32 = numeric_limits<quint32>::max();
 
-using rapidjson::Document;
-using rapidjson::IStreamWrapper;
-using RJVal = rapidjson::Value;
+using SimdJsonElement = simdjson::dom::element;
 
 class QProgressDialog;
 
@@ -38,7 +35,7 @@ class FastJsonTree {
 
  public:
   FastJsonTree();
-  void buildTree(const Document *doc);
+  void buildTree(const SimdJsonElement &doc);
 
   string key(quint32 n) const;
   QVariant value(quint32 n) const;
@@ -57,10 +54,10 @@ class FastJsonTree {
   bool isEmpty() const;
 
  private:
-  quint32 _buildTreeRecursive(const RJVal *jsonValue,
-                              const quint32 parentIndex);
+  quint32 _buildTreeRecursive(const SimdJsonElement &jsonValue,
+                              quint32 parentIndex);
   quint32 _addKeyAndGetPos(const string &key);
-  NodeType _typeFromJson(const RJVal &value, Data &d);
+  NodeType _typeFromJson(const SimdJsonElement &value, Data &d);
 
   vector<quint32> m_parentPosition;
   vector<quint32> m_firstChildPosition;

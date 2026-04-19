@@ -1,8 +1,7 @@
 #include "json_treeview_model.h"
 
 #include <qprogressdialog.h>
-#include <rapidjson/document.h>
-#include <rapidjson/istreamwrapper.h>
+#include <simdjson.h>
 
 #include <QApplication>
 #include <QBrush>
@@ -12,13 +11,8 @@
 #include <QIcon>
 #include <QJsonArray>
 #include <QWidget>
-#include <fstream>
 
-using rapidjson::Document;
-using rapidjson::IStreamWrapper;
-
-JsonTreeViewModel::JsonTreeViewModel(QObject *parent)
-    : QAbstractItemModel(parent) {
+JsonTreeViewModel::JsonTreeViewModel(QObject *parent) : QAbstractItemModel(parent) {
   m_baseFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
 
   B.key = QColor(0, 87, 174);
@@ -30,37 +24,140 @@ JsonTreeViewModel::JsonTreeViewModel(QObject *parent)
   B.containerObject = QColor(100, 74, 155);
 }
 
-bool JsonTreeViewModel::populateFromJson(const QString jsonFilePath) {
+bool JsonTreeViewModel::populateFromJson(const QString jsonFilePath, QString *errorMsg) {
   auto utf8_path = jsonFilePath.toUtf8();
-  std::ifstream ifs(utf8_path.constData(), std::ios::binary);
-  if (!ifs.is_open()) {
-    return false;
-  }
+  simdjson::dom::parser parser;
+  simdjson::dom::element doc;
+  if (const auto error = parser.load(utf8_path.constData()).get(doc); error) {
+    QString msg;
+    switch (error) {
+    case simdjson::CAPACITY:
+      msg = "This parser can't support a document that big";
+      break;
+    case simdjson::MEMALLOC:
+      msg = "Error allocating memory, most likely out of memory";
+      break;
+    case simdjson::TAPE_ERROR:
+      msg = "Something went wrong, this is a generic error. "
+            "Fatal/unrecoverable error   ";
+      break;
+    case simdjson::DEPTH_ERROR:
+      msg = "Your document exceeds the user-specified depth limitation";
+      break;
+    case simdjson::STRING_ERROR:
+      msg = "Problem while parsing a string";
+      break;
+    case simdjson::T_ATOM_ERROR:
+      msg = "Problem while parsing an atom starting with the letter 't'";
+      break;
+    case simdjson::F_ATOM_ERROR:
+      msg = "Problem while parsing an atom starting with the letter 'f'";
+      break;
 
-  IStreamWrapper isw(ifs);
-  Document doc;
-  // You can add flags like kParseCommentsFlag, kParseTrailingCommasFlag if
-  // needed
-  doc.ParseStream(isw);
-  if (doc.HasParseError()) {
+    case simdjson::N_ATOM_ERROR:
+      msg = "Problem while parsing an atom starting with the letter 'n'";
+      break;
+    case simdjson::NUMBER_ERROR:
+      msg = "Problem while parsing a number";
+      break;
+    case simdjson::BIGINT_ERROR:
+      msg = "The integer value exceeds 64 bits";
+      break;
+    case simdjson::UTF8_ERROR:
+      msg = "The input is not valid UTF-8";
+      break;
+    case simdjson::UNINITIALIZED:
+      msg = "Unknown error, or uninitialized document";
+      break;
+    case simdjson::EMPTY:
+      msg = "No structural element found";
+      break;
+    case simdjson::UNESCAPED_CHARS:
+      msg = "Found unescaped characters in a string";
+      break;
+    case simdjson::UNCLOSED_STRING:
+      msg = "Missing quote at the end of a string";
+      break;
+    case simdjson::UNSUPPORTED_ARCHITECTURE:
+      msg = "Unsupported architecture";
+      break;
+    case simdjson::INCORRECT_TYPE:
+      msg = "JSON element has a different type than user expected";
+      break;
+    case simdjson::NUMBER_OUT_OF_RANGE:
+      msg = "JSON number does not fit in 64 bits";
+      break;
+    case simdjson::INDEX_OUT_OF_BOUNDS:
+      msg = "JSON array index too large";
+      break;
+    case simdjson::NO_SUCH_FIELD:
+      msg = "JSON field not found in object";
+      break;
+    case simdjson::IO_ERROR:
+      msg = "Error reading a file";
+      break;
+    case simdjson::INVALID_JSON_POINTER:
+      msg = "Invalid JSON pointer syntax";
+      break;
+    case simdjson::INVALID_URI_FRAGMENT:
+      msg = "Invalid URI fragment";
+      break;
+    case simdjson::UNEXPECTED_ERROR:
+      msg = "Indicative of a bug in simdjson";
+      break;
+    case simdjson::PARSER_IN_USE:
+      msg = "Parser is already in use.";
+      break;
+    case simdjson::OUT_OF_ORDER_ITERATION:
+      msg = "Tried to iterate an array or object out of order (checked when "
+            "SIMDJSON_DEVELOPMENT_CHECKS=1)";
+      break;
+    case simdjson::INSUFFICIENT_PADDING:
+      msg = "The JSON doesn't have enough padding for simdjson to safely parse "
+            "it.";
+      break;
+    case simdjson::INCOMPLETE_ARRAY_OR_OBJECT:
+      msg = "The document ends early. Fatal/unrecoverable error.";
+      break;
+    case simdjson::SCALAR_DOCUMENT_AS_VALUE:
+      msg = "A scalar document is treated as a value.";
+      break;
+    case simdjson::OUT_OF_BOUNDS:
+      msg = "Attempted to access location outside of document.";
+      break;
+    case simdjson::TRAILING_CONTENT:
+      msg = "Unexpected trailing content in the JSON input";
+      break;
+    case simdjson::OUT_OF_CAPACITY:
+      msg = "The capacity was exceeded, we cannot allocate enough memory.";
+    default:
+      msg = "Unknown error";
+      break;
+    }
+
+    qWarning() << "Error parsing JSON file:" << jsonFilePath << "\n" << msg;
+    if (errorMsg)
+      errorMsg->swap(msg);
     return false;
   }
 
   beginResetModel();
 
   m_fastJsonTree.clear();
-  m_fastJsonTree.buildTree(&doc);
+  m_fastJsonTree.buildTree(doc);
 
   endResetModel();
   return true;
 }
 
-JsonTreeViewModel::~JsonTreeViewModel() { m_fastJsonTree.clear(); }
+JsonTreeViewModel::~JsonTreeViewModel() {
+  m_fastJsonTree.clear();
+}
 
-QModelIndex JsonTreeViewModel::index(int row, int column,
-                                     const QModelIndex &parentIdx) const {
+QModelIndex JsonTreeViewModel::index(int row, int column, const QModelIndex &parentIdx) const {
   // qDebug() << "index()" << row << column << parentIdx;
-  if (column < 0 || row < 0 || m_fastJsonTree.isEmpty()) return {};
+  if (column < 0 || row < 0 || m_fastJsonTree.isEmpty())
+    return {};
   if (!parentIdx.isValid()) {
     return createIndex(row, column, static_cast<quintptr>(0));
   }
@@ -71,21 +168,22 @@ QModelIndex JsonTreeViewModel::index(int row, int column,
 
 QModelIndex JsonTreeViewModel::parent(const QModelIndex &childIdx) const {
   // qDebug() << "parent()" << childIdx;
-  if (!childIdx.isValid()) return {};
+  if (!childIdx.isValid())
+    return {};
 
   quint32 cn_idx = nodeFromIndex(childIdx);
   quint32 pn_idx = m_fastJsonTree.parent(cn_idx);
 
-  if (pn_idx == MAX_U32) {  // root node
-    return QModelIndex();   // root node has invalid parent
+  if (pn_idx == MAX_U32) { // root node
+    return QModelIndex();  // root node has invalid parent
   }
-  return createIndex(m_fastJsonTree.rowInParent(pn_idx), 0,
-                     static_cast<quintptr>(pn_idx));
+  return createIndex(m_fastJsonTree.rowInParent(pn_idx), 0, static_cast<quintptr>(pn_idx));
 }
 
 int JsonTreeViewModel::rowCount(const QModelIndex &parentIndex) const {
   // qDebug() << "rowCount()" << parentIndex;
-  if (m_fastJsonTree.isEmpty()) return 0;
+  if (m_fastJsonTree.isEmpty())
+    return 0;
 
   quint32 pn_idx = nodeFromIndex(parentIndex);
   if (pn_idx == MAX_U32) {
@@ -101,7 +199,8 @@ int JsonTreeViewModel::columnCount(const QModelIndex &parentIndex) const {
 QVariant JsonTreeViewModel::data(const QModelIndex &idx, int role) const {
   // qDebug() << "data" << idx << role;
 
-  if (!idx.isValid()) return {};
+  if (!idx.isValid())
+    return {};
 
   const quint32 n_idx = nodeFromIndex(idx);
   // qDebug() << "data()" << n_idx << m_fastJsonTree.key(n_idx) <<
@@ -109,62 +208,64 @@ QVariant JsonTreeViewModel::data(const QModelIndex &idx, int role) const {
   const bool is_key_col = (idx.column() == 0);
 
   switch (role) {
-    case Qt::DisplayRole:
-      return is_key_col
-                 ? QString::fromStdString(m_fastJsonTree.key(n_idx) + ":")
-                 : QString::fromStdString(m_fastJsonTree.valueAsStr(n_idx));
+  case Qt::DisplayRole:
+    return is_key_col ? QString::fromStdString(m_fastJsonTree.key(n_idx) + ":")
+                      : QString::fromStdString(m_fastJsonTree.valueAsStr(n_idx));
 
-    case Qt::ForegroundRole: {
-      if (is_key_col) {
-        return B.key;
-      } else {
-        switch (m_fastJsonTree.type(n_idx)) {
-          case NodeType::Str:
-            return B.str;
-          case NodeType::Num:
-            return B.num;
-          case NodeType::Bool:
-            return B.boolean;
-          case NodeType::Null:
-            return B.nullish;
-          case NodeType::Object:
-            return B.containerObject;
-          case NodeType::Array:
-            return B.containerArray;
-        }
+  case Qt::ForegroundRole: {
+    if (is_key_col) {
+      return B.key;
+    }
+    else {
+      switch (m_fastJsonTree.type(n_idx)) {
+      case NodeType::Str:
+        return B.str;
+      case NodeType::Num:
+        return B.num;
+      case NodeType::Bool:
+        return B.boolean;
+      case NodeType::Null:
+        return B.nullish;
+      case NodeType::Object:
+        return B.containerObject;
+      case NodeType::Array:
+        return B.containerArray;
       }
     }
+  }
 
-    case Qt::FontRole: {
-      if (is_key_col) {
-        return m_baseFont;
-      } else {
-        QFont f = m_baseFont;
-        switch (m_fastJsonTree.type(n_idx)) {
-          case NodeType::Null: {
-            f.setItalic(true);
-            f.setBold(true);
-            break;
-          }
-          case NodeType::Bool: {
-            f.setBold(true);
-            break;
-          }
-          default: {
-          }
-        }
-        return f;
-      }
+  case Qt::FontRole: {
+    if (is_key_col) {
+      return m_baseFont;
     }
+    else {
+      QFont f = m_baseFont;
+      switch (m_fastJsonTree.type(n_idx)) {
+      case NodeType::Null: {
+        f.setItalic(true);
+        f.setBold(true);
+        break;
+      }
+      case NodeType::Bool: {
+        f.setBold(true);
+        break;
+      }
+      default: {
+      }
+      }
+      return f;
+    }
+  }
 
-    default:
-      return {};
+  default:
+    return {};
   }
   return {};
 }
 
 Qt::ItemFlags JsonTreeViewModel::flags(const QModelIndex &idx) const {
-  if (!idx.isValid()) return Qt::NoItemFlags;
+  if (!idx.isValid())
+    return Qt::NoItemFlags;
   quint32 n_idx = nodeFromIndex(idx);
 
   Qt::ItemFlags f = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
@@ -174,18 +275,17 @@ Qt::ItemFlags JsonTreeViewModel::flags(const QModelIndex &idx) const {
   return f;
 }
 
-QVariant JsonTreeViewModel::headerData(int section, Qt::Orientation orientation,
-                                       int role) const {
+QVariant JsonTreeViewModel::headerData(int section, Qt::Orientation orientation, int role) const {
   switch (role) {
-    case Qt::DisplayRole: {
-      if (section == 0)
-        return "Key";
-      else
-        return "Value";
-    }
-    default:
-      return {};
-      break;
+  case Qt::DisplayRole: {
+    if (section == 0)
+      return "Key";
+    else
+      return "Value";
+  }
+  default:
+    return {};
+    break;
   }
 }
 
@@ -199,16 +299,16 @@ QString JsonTreeViewModel::nodeKey(const QModelIndex &idx) const {
 QString JsonTreeViewModel::nodeValueStr(const QModelIndex &idx) const {
   quint32 n = nodeFromIndex(idx);
   switch (m_fastJsonTree.type(n)) {
-    case NodeType::Array:
-    case NodeType::Object:
-    case NodeType::Str:
-      return m_fastJsonTree.value(n).toString();
-    case NodeType::Num:
-      return QString::number(m_fastJsonTree.value(n).toDouble(), 'g', 12);
-    case NodeType::Bool:
-      return QString("%1").arg(m_fastJsonTree.value(n).toBool());
-    default:
-      return "null";
+  case NodeType::Array:
+  case NodeType::Object:
+  case NodeType::Str:
+    return m_fastJsonTree.value(n).toString();
+  case NodeType::Num:
+    return QString::number(m_fastJsonTree.value(n).toDouble(), 'g', 12);
+  case NodeType::Bool:
+    return QString("%1").arg(m_fastJsonTree.value(n).toBool());
+  default:
+    return "null";
   }
 }
 
@@ -219,16 +319,17 @@ NodeType JsonTreeViewModel::nodeType(const QModelIndex &idx) const {
 quint32 JsonTreeViewModel::subTreeNodesCount(const QModelIndex &idx) const {
   quint32 n = nodeFromIndex(idx);
   switch (m_fastJsonTree.type(n)) {
-    case NodeType::Array:
-    case NodeType::Object:
-      return m_fastJsonTree.m_nodeValueOrPos[n].index;
-    default:
-      return 0;
+  case NodeType::Array:
+  case NodeType::Object:
+    return m_fastJsonTree.m_nodeValueOrPos[n].index;
+  default:
+    return 0;
   }
 }
 
 quint32 JsonTreeViewModel::nodeFromIndex(const QModelIndex &idx) const {
-  if (!idx.isValid()) return MAX_U32;
+  if (!idx.isValid())
+    return MAX_U32;
   return static_cast<quint32>(idx.internalId());
 }
 
