@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
 
   QFont defaultFont = a.font();
   if (defaultFont.pointSizeF() < 12) {
-    defaultFont.setPointSize(12);  // Set your desired font size
+    defaultFont.setPointSize(12); // Set your desired font size
     a.setFont(defaultFont);
   }
   MainWindow w;

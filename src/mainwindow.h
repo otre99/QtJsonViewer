@@ -17,12 +17,12 @@ QT_END_NAMESPACE
 class MainWindow : public QMainWindow {
   Q_OBJECT
 
- public:
+public:
   MainWindow(QWidget *parent = nullptr);
   ~MainWindow();
   void loadJsonFile(const QString &jsonFilePath);
 
- private slots:
+private slots:
   void on_actionOpen_JSON_triggered();
   void on_actionZoom_In_triggered();
   void on_actionZoom_Out_triggered();
@@ -34,7 +34,7 @@ class MainWindow : public QMainWindow {
   void clearCurrentNodeInfo();
   void on_treeView_customContextMenuRequested(const QPoint &pos);
 
- private:
+private:
   void setZoom(double pt);
   void setupTreeViewMenu(QMenu &menu, const QModelIndex &index);
   void collapseRecursively(QTreeView *v, const QModelIndex &root);
@@ -52,4 +52,4 @@ class MainWindow : public QMainWindow {
   static constexpr int kMaxRecent = 16;
   static constexpr int kMaxExpandCollapseNodesCount = 1 << 20;
 };
-#endif  // MAINWINDOW_H
+#endif // MAINWINDOW_H

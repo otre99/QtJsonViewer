@@ -3,7 +3,6 @@
 
 #include <algorithm>
 
-
 #include "json_treeview_model.h"
 #include "text_matcher.h"
 
@@ -25,63 +24,53 @@ QVariant ListViewSearchModel::data(const QModelIndex &idx, int role) const {
 
   quint32 nidx = m_validNodes[idx.row()];
   switch (role) {
-    case Qt::DisplayRole:
-      switch (m_jsonTreeViewModel->m_fastJsonTree.type(nidx)) {
-        case NodeType::Array:
-          return QString::fromStdString(
-              m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-        case NodeType::Object:
-          return QString::fromStdString(
-              m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-        case NodeType::Num:
-          return QString::fromStdString(
-              m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-        case NodeType::Str:
-          return QString::fromStdString(
-              m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-        case NodeType::Bool:
-          return QString::fromStdString(
-              m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-        case NodeType::Null:
-          return QString::fromStdString(
-              m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-      }
-      // case Qt::ForegroundRole:
-      //   switch (m_jsonTreeViewModel->m_fastJsonTree.type(nidx)) {
-      //     case NodeType::Str:
-      //       return m_jsonTreeViewModel->B.str;
-      //     case NodeType::Num:
-      //       return m_jsonTreeViewModel->B.num;
-      //     case NodeType::Bool:
-      //       return m_jsonTreeViewModel->B.boolean;
-      //     case NodeType::Null:
-      //       return m_jsonTreeViewModel->B.nullish;
-      //     case NodeType::Object:
-      //       return m_jsonTreeViewModel->B.containerObject;
-      //     case NodeType::Array:
-      //       return m_jsonTreeViewModel->B.containerArray;
-      //   }
+  case Qt::DisplayRole:
+    switch (m_jsonTreeViewModel->m_fastJsonTree.type(nidx)) {
+    case NodeType::Array:
+      return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
+    case NodeType::Object:
+      return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
+    case NodeType::Num:
+      return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
+    case NodeType::Str:
+      return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
+    case NodeType::Bool:
+      return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
+    case NodeType::Null:
+      return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
+    }
+    // case Qt::ForegroundRole:
+    //   switch (m_jsonTreeViewModel->m_fastJsonTree.type(nidx)) {
+    //     case NodeType::Str:
+    //       return m_jsonTreeViewModel->B.str;
+    //     case NodeType::Num:
+    //       return m_jsonTreeViewModel->B.num;
+    //     case NodeType::Bool:
+    //       return m_jsonTreeViewModel->B.boolean;
+    //     case NodeType::Null:
+    //       return m_jsonTreeViewModel->B.nullish;
+    //     case NodeType::Object:
+    //       return m_jsonTreeViewModel->B.containerObject;
+    //     case NodeType::Array:
+    //       return m_jsonTreeViewModel->B.containerArray;
+    //   }
 
-    case Qt::FontRole:
-      return m_baseFont;
+  case Qt::FontRole:
+    return m_baseFont;
 
-    default:
-      return {};
+  default:
+    return {};
   }
 }
 
-void ListViewSearchModel::doSearch(SearchMode mode, const QString &searchText,
-                                   bool caseSensitive, bool wholeWord,
+void ListViewSearchModel::doSearch(SearchMode mode, const QString &searchText, bool caseSensitive, bool wholeWord,
                                    bool useRegex) {
-  vector<unsigned char> matches(
-      m_jsonTreeViewModel->m_fastJsonTree.nodesCount());
+  vector<unsigned char> matches(m_jsonTreeViewModel->m_fastJsonTree.nodesCount());
 
-  const vector<quint32> &p =
-      m_jsonTreeViewModel->m_fastJsonTree.m_parentPosition;
+  const vector<quint32> &p = m_jsonTreeViewModel->m_fastJsonTree.m_parentPosition;
 
   // Build text matcher for modes that need text
-  TextMatcher textMatcher(searchText.toStdString(), caseSensitive, wholeWord,
-                          useRegex);
+  TextMatcher textMatcher(searchText.toStdString(), caseSensitive, wholeWord, useRegex);
 
   // Parse number/bool once
   double snum = 0.0;
@@ -97,70 +86,67 @@ void ListViewSearchModel::doSearch(SearchMode mode, const QString &searchText,
   }
 
   // Numeric tolerance (tweak or expose in UI)
-  const double epsAbs = 1e-9;  // absolute tol
-  const double epsRel = 1e-6;  // relative tol
+  const double epsAbs = 1e-9; // absolute tol
+  const double epsRel = 1e-6; // relative tol
 
   auto numEqual = [&](double a, double b) {
     const double diff = std::fabs(a - b);
-    if (diff <= epsAbs) return true;
+    if (diff <= epsAbs)
+      return true;
     const double scale = std::max({1.0, std::fabs(a), std::fabs(b)});
     return diff <= epsRel * scale;
   };
 
   const FastJsonTree &ft = m_jsonTreeViewModel->m_fastJsonTree;
 
-  for_each(
-      execution::par_unseq, p.cbegin(), p.cend(),
-      [&](const quint32 &pn) {
-        const quint32 nodeId = static_cast<quint32>(&pn - p.data());
+  for_each(execution::par_unseq, p.cbegin(), p.cend(),
+           [&](const quint32 &pn) {
+             const quint32 nodeId = static_cast<quint32>(&pn - p.data());
 
-        switch (mode) {
-          case SearchMode::KeyOrValue:
-            matches[nodeId] = textMatcher.match(ft.key(nodeId)) ||
-                              textMatcher.match(ft.valueAsStr(nodeId));
-            break;
+             switch (mode) {
+             case SearchMode::KeyOrValue:
+               matches[nodeId] = textMatcher.match(ft.key(nodeId)) || textMatcher.match(ft.valueAsStr(nodeId));
+               break;
 
-          case SearchMode::Key:
-            matches[nodeId] = textMatcher.match(ft.key(nodeId));
-            break;
+             case SearchMode::Key:
+               matches[nodeId] = textMatcher.match(ft.key(nodeId));
+               break;
 
-          case SearchMode::ValueAny:
-            matches[nodeId] = textMatcher.match(ft.valueAsStr(nodeId));
-            break;
+             case SearchMode::ValueAny:
+               matches[nodeId] = textMatcher.match(ft.valueAsStr(nodeId));
+               break;
 
-          case SearchMode::ValueStr:
-            matches[nodeId] = (ft.type(nodeId) == NodeType::Str) &&
-                              textMatcher.match(ft.valueAsStr(nodeId));
-            break;
+             case SearchMode::ValueStr:
+               matches[nodeId] = (ft.type(nodeId) == NodeType::Str) && textMatcher.match(ft.valueAsStr(nodeId));
+               break;
 
-          case SearchMode::ValueBool:
-            if (ft.type(nodeId) == NodeType::Bool) {
-              const bool v = bool(
-                  ft.m_nodeValueOrPos[nodeId].index);  // prefer an accessor
-              matches[nodeId] = (v == sbool);
-            }
-            break;
+             case SearchMode::ValueBool:
+               if (ft.type(nodeId) == NodeType::Bool) {
+                 const bool v = bool(ft.m_nodeValueOrPos[nodeId].index); // prefer an accessor
+                 matches[nodeId] = (v == sbool);
+               }
+               break;
 
-          case SearchMode::ValueNum:
-            if (ft.type(nodeId) == NodeType::Num) {
-              const double v =
-                  ft.m_nodeValueOrPos[nodeId].num;  // prefer an accessor
-              matches[nodeId] = numEqual(v, snum);
-            }
-            break;
+             case SearchMode::ValueNum:
+               if (ft.type(nodeId) == NodeType::Num) {
+                 const double v = ft.m_nodeValueOrPos[nodeId].num; // prefer an accessor
+                 matches[nodeId] = numEqual(v, snum);
+               }
+               break;
 
-          case SearchMode::ValueNull:
-            matches[nodeId] = (ft.type(nodeId) == NodeType::Null);
-            break;
-        }
-      }
+             case SearchMode::ValueNull:
+               matches[nodeId] = (ft.type(nodeId) == NodeType::Null);
+               break;
+             }
+           }
 
   );
 
   m_validNodes.clear();
   beginResetModel();
   for (quint32 i = 0; i < matches.size(); ++i) {
-    if (matches[i]) m_validNodes.push_back(i);
+    if (matches[i])
+      m_validNodes.push_back(i);
   }
   qDebug() << "Found " << m_validNodes.size();
   endResetModel();

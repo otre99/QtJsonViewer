@@ -84,6 +84,6 @@ Please open an issue for bugs/ideas or send a pull request with improvements.
 
 ## Acknowledgements
  - Built with Qt 6 (Fusion style, Widgets stack)
- - JSON parsing via simdjson
+ - JSON parsing is powered by [simdjson](https://github.com/simdjson/simdjson), the high-performance JSON library by Daniel Lemire et al.
  - Parallel search backed by Intel TBB
  - AppImage packaging powered by linuxdeploy and Qt deploy scripts

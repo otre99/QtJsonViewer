@@ -25,7 +25,6 @@ JsonTreeViewModel::JsonTreeViewModel(QObject *parent) : QAbstractItemModel(paren
 }
 
 bool JsonTreeViewModel::populateFromJson(const QString jsonFilePath, QString *errorMsg) {
-
   auto t1 = std::chrono::steady_clock::now();
   auto utf8_path = jsonFilePath.toUtf8();
   simdjson::dom::parser parser;
@@ -151,7 +150,7 @@ bool JsonTreeViewModel::populateFromJson(const QString jsonFilePath, QString *er
   endResetModel();
   auto t2 = std::chrono::steady_clock::now();
   auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-  qDebug() << "Load JSON time: " << ms << " ms";
+  qDebug() << "Load JSON time: " << ms.count() << " ms";
   return true;
 }
 

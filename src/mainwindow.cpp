@@ -236,8 +236,7 @@ void MainWindow::updateRecentMenu() {
     QAction *a;
     if (i < recent_actions.size()) { // use existing action
       a = recent_actions[i];
-    }
-    else {
+    } else {
       a = new QAction(this);
       connect(a, &QAction::triggered, this, &MainWindow::openRecent);
       ui->menuRecent_files->addAction(a);

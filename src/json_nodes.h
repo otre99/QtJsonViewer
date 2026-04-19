@@ -33,7 +33,7 @@ class FastJsonTree {
   friend class ListViewSearchModel;
   friend class JsonTreeViewModel;
 
- public:
+public:
   FastJsonTree();
   void buildTree(const SimdJsonElement &doc);
 
@@ -53,9 +53,8 @@ class FastJsonTree {
   void clear();
   bool isEmpty() const;
 
- private:
-  quint32 _buildTreeRecursive(const SimdJsonElement &jsonValue,
-                              quint32 parentIndex);
+private:
+  quint32 _buildTreeRecursive(const SimdJsonElement &jsonValue, quint32 parentIndex);
   quint32 _addKeyAndGetPos(const string &key);
   NodeType _typeFromJson(const SimdJsonElement &value, Data &d);
 
@@ -73,4 +72,4 @@ class FastJsonTree {
   qint32 m_currentKeyPos{-1};
 };
 
-#endif  // JSON_NODES_H
+#endif // JSON_NODES_H

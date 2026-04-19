@@ -36,11 +36,9 @@ void FastJsonTree::buildTree(const SimdJsonElement &doc) {
   const auto docType = doc.type();
   if (docType == simdjson::dom::element_type::ARRAY) {
     m_nodeType.push_back(NodeType::Array);
-  }
-  else if (docType == simdjson::dom::element_type::OBJECT) {
+  } else if (docType == simdjson::dom::element_type::OBJECT) {
     m_nodeType.push_back(NodeType::Object);
-  }
-  else {
+  } else {
     clear();
     return;
   }
@@ -89,6 +87,7 @@ QVariant FastJsonTree::value(quint32 n) const {
   case NodeType::Null:
     return "null";
   }
+  throw std::logic_error("FastJsonTree::value(): Unknow type for value: " + to_string(n));
 }
 
 string FastJsonTree::valueAsStr(quint32 n) const {
@@ -106,6 +105,7 @@ string FastJsonTree::valueAsStr(quint32 n) const {
   case NodeType::Null:
     return "null";
   }
+  throw std::logic_error("FastJsonTree::valueAsStr(): Unknow type for value: " + to_string(n));
 }
 
 string FastJsonTree::nodePreview(quint32 n) const {
@@ -126,6 +126,7 @@ string FastJsonTree::nodePreview(quint32 n) const {
     return format("\"{}\": \"{}\"", k, v);
   }
   }
+  throw std::logic_error("FastJsonTree::nodePreview(): Unknow type for value: " + to_string(n));
 }
 
 quint32 FastJsonTree::parent(quint32 n) const {
@@ -150,8 +151,7 @@ string FastJsonTree::nodePath(quint32 n) const {
   while ((idx = parent(n)) != MAX_U32) {
     if (type(idx) == NodeType::Array) {
       pathParts.push_back(key(n));
-    }
-    else {
+    } else {
       pathParts.push_back(format("[\"{}\"]", key(n)));
     }
     n = idx;
@@ -195,8 +195,7 @@ quint32 FastJsonTree::_buildTreeRecursive(const SimdJsonElement &jsonValue, quin
       return 0;
     }
     childrenCount = static_cast<quint32>(array.size());
-  }
-  else {
+  } else {
     simdjson::dom::object object;
     if (jsonValue.get(object)) {
       return 0;
@@ -240,8 +239,7 @@ quint32 FastJsonTree::_buildTreeRecursive(const SimdJsonElement &jsonValue, quin
       }
       ++row;
     }
-  }
-  else {
+  } else {
     simdjson::dom::object object;
     if (jsonValue.get(object)) {
       return 0;
