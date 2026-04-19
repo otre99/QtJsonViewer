@@ -25,6 +25,8 @@ JsonTreeViewModel::JsonTreeViewModel(QObject *parent) : QAbstractItemModel(paren
 }
 
 bool JsonTreeViewModel::populateFromJson(const QString jsonFilePath, QString *errorMsg) {
+
+  auto t1 = std::chrono::steady_clock::now();
   auto utf8_path = jsonFilePath.toUtf8();
   simdjson::dom::parser parser;
   simdjson::dom::element doc;
@@ -147,6 +149,9 @@ bool JsonTreeViewModel::populateFromJson(const QString jsonFilePath, QString *er
   m_fastJsonTree.buildTree(doc);
 
   endResetModel();
+  auto t2 = std::chrono::steady_clock::now();
+  auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+  qDebug() << "Load JSON time: " << ms << " ms";
   return true;
 }
 
@@ -215,8 +220,7 @@ QVariant JsonTreeViewModel::data(const QModelIndex &idx, int role) const {
   case Qt::ForegroundRole: {
     if (is_key_col) {
       return B.key;
-    }
-    else {
+    } else {
       switch (m_fastJsonTree.type(n_idx)) {
       case NodeType::Str:
         return B.str;
@@ -237,8 +241,7 @@ QVariant JsonTreeViewModel::data(const QModelIndex &idx, int role) const {
   case Qt::FontRole: {
     if (is_key_col) {
       return m_baseFont;
-    }
-    else {
+    } else {
       QFont f = m_baseFont;
       switch (m_fastJsonTree.type(n_idx)) {
       case NodeType::Null: {
