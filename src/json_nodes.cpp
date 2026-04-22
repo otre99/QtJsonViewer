@@ -302,8 +302,13 @@ NodeType FastJsonTree::_typeFromJson(const SimdJsonElement &value, Data &d) {
     return NodeType::Str;
   }
 
-  case simdjson::dom::element_type::DOUBLE:
-  case simdjson::dom::element_type::UINT64:
+  case simdjson::dom::element_type::DOUBLE: {
+    double parsed = 0;
+    std::ignore = value.get(parsed);
+    d.num = static_cast<double>(parsed);
+    return NodeType::Num;
+  }
+
   case simdjson::dom::element_type::INT64: {
     int64_t parsed = 0;
     std::ignore = value.get(parsed);
@@ -317,8 +322,9 @@ NodeType FastJsonTree::_typeFromJson(const SimdJsonElement &value, Data &d) {
   case simdjson::dom::element_type::ARRAY:
     return NodeType::Array;
 
+  case simdjson::dom::element_type::UINT64:
   case simdjson::dom::element_type::BIGINT: {
-    qWarning() << "Big integer is parsed as 0";
+    qWarning() << "BIGINT or UINT64 is parsed as 0";
     d.num = 0;
     return NodeType::Num;
   }

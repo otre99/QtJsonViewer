@@ -28,7 +28,7 @@ enum class NodeType : unsigned char {
 class FastJsonTree {
   union Data {
     double num;
-    quint32 index;
+    quint64 index;
   };
   friend class ListViewSearchModel;
   friend class JsonTreeViewModel;
