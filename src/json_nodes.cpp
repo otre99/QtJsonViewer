@@ -9,6 +9,7 @@
 #include <QProgressDialog>
 #include <format>
 
+
 FastJsonTree::FastJsonTree() {
   m_parentPosition.reserve(PREALLOCATION_SIZE);
   m_firstChildPosition.reserve(PREALLOCATION_SIZE);
@@ -78,8 +79,10 @@ QVariant FastJsonTree::value(quint32 n) const {
     return rows(n) ? "[...]" : "[]";
   case NodeType::Object:
     return rows(n) ? "{...}" : "{}";
-  case NodeType::Num:
+  case NodeType::NumFloat:
     return m_nodeValueOrPos[n].num;
+  case NodeType::NumInt:
+      return m_nodeValueOrPos[n].index;
   case NodeType::Bool:
     return bool(m_nodeValueOrPos[n].index);
   case NodeType::Str:
@@ -96,8 +99,10 @@ string FastJsonTree::valueAsStr(quint32 n) const {
     return rows(n) ? "[...]" : "[]";
   case NodeType::Object:
     return rows(n) ? "{...}" : "{}";
-  case NodeType::Num:
+  case NodeType::NumFloat:
     return format("{}", m_nodeValueOrPos[n].num);
+  case NodeType::NumInt:
+      return format("{}", m_nodeValueOrPos[n].index);
   case NodeType::Bool:
     return m_nodeValueOrPos[n].index ? "true" : "false";
   case NodeType::Str:
@@ -114,7 +119,8 @@ string FastJsonTree::nodePreview(quint32 n) const {
   switch (type(n)) {
   case NodeType::Array:
   case NodeType::Object:
-  case NodeType::Num:
+  case NodeType::NumFloat:
+  case NodeType::NumInt:
   case NodeType::Bool:
   case NodeType::Null: {
     return format("\"{}\": {}", k, v);
@@ -306,14 +312,14 @@ NodeType FastJsonTree::_typeFromJson(const SimdJsonElement &value, Data &d) {
     double parsed = 0;
     std::ignore = value.get(parsed);
     d.num = static_cast<double>(parsed);
-    return NodeType::Num;
+    return NodeType::NumFloat;
   }
 
   case simdjson::dom::element_type::INT64: {
     int64_t parsed = 0;
     std::ignore = value.get(parsed);
-    d.num = static_cast<double>(parsed);
-    return NodeType::Num;
+    d.index = static_cast<qint64>(parsed);
+    return NodeType::NumInt;
   }
 
   case simdjson::dom::element_type::OBJECT:
@@ -326,7 +332,7 @@ NodeType FastJsonTree::_typeFromJson(const SimdJsonElement &value, Data &d) {
   case simdjson::dom::element_type::BIGINT: {
     qWarning() << "BIGINT or UINT64 is parsed as 0";
     d.num = 0;
-    return NodeType::Num;
+    return NodeType::NumInt;
   }
   }
 

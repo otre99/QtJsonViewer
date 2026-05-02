@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QList>
 #include <QProgressDialog>
+#include <qdir.h>
 
 #include "json_nodes.h"
 
@@ -41,6 +42,7 @@ public:
   QString nodeValueStr(const QModelIndex &idx) const;
   NodeType nodeType(const QModelIndex &idx) const;
   quint32 subTreeNodesCount(const QModelIndex &idx) const;
+  bool exportToJsonFile(const QModelIndex &rootIndex, const QString &outputFilePath);
 
 signals:
 
@@ -51,6 +53,7 @@ private:
   quint32 nodeFromIndex(const QModelIndex &idx) const;
   QFont m_baseFont;
   FastJsonTree m_fastJsonTree;
+  void writeNode(quint32 n, QTextStream &stream);
 };
 
 #endif // JSON_TREEVIEW_MODEL_H

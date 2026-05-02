@@ -134,7 +134,8 @@ void MainWindow::on_treeView_clicked(const QModelIndex &index) {
     case NodeType::Null:
       ui->lineEditNodeType->setText("Null");
       break;
-    case NodeType::Num:
+    case NodeType::NumInt:
+    case NodeType::NumFloat:
       ui->lineEditNodeType->setText("Number");
       break;
     case NodeType::Bool:
@@ -317,16 +318,8 @@ void MainWindow::setupTreeViewMenu(QMenu &menu, const QModelIndex &index) {
       connect(act, &QAction::triggered, this, [&]() { ui->treeView->expandRecursively(index); });
     }
 
-    // //TODO(implemnt this in the next version)
-    // if (act) {
-    //   menu.addSeparator();
-    // }
-
-    // if (rows) {
-    //   act = menu.addAction("Export to file");
-    //   // connect(act, &QAction::triggered, this,
-    //   //         [&]() { ui->treeView->expandRecursively(index, -1); });
-    // }
+    act = menu.addAction("Export to file");
+    connect(act, &QAction::triggered, this, [&]() { this->exportToJsonFile(index); });
   }
 
   if (!nodeIsContainer) {
@@ -368,4 +361,12 @@ void MainWindow::expandRecursively(QTreeView *v, const QModelIndex &root, int le
     auto idx = m_jsonTreeModel->index(r, 0, root);
     expandRecursively(v, idx, lev + 1);
   }
+}
+
+void MainWindow::exportToJsonFile(const QModelIndex &rootIndex) {
+  const QString jsonOutputFile = QFileDialog::getSaveFileName(this, "Export JSON file");
+  if (jsonOutputFile.isEmpty()) {
+    return;
+  }
+  m_jsonTreeModel->exportToJsonFile(rootIndex, jsonOutputFile);
 }

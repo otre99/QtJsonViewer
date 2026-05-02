@@ -8,9 +8,23 @@
 #include <QFile>
 #include <QFont>
 #include <QFontDatabase>
+#include <QIODevice>
 #include <QIcon>
 #include <QJsonArray>
 #include <QWidget>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
+
+namespace {
+
+QString prepareStr(const string &str) {
+  rapidjson::StringBuffer sb;
+  rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
+  writer.String(str.data(), str.length());
+  return QString::fromStdString(sb.GetString());
+}
+
+} // namespace
 
 JsonTreeViewModel::JsonTreeViewModel(QObject *parent) : QAbstractItemModel(parent) {
   m_baseFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
@@ -54,7 +68,6 @@ bool JsonTreeViewModel::populateFromJson(const QString jsonFilePath, QString *er
     case simdjson::F_ATOM_ERROR:
       msg = "Problem while parsing an atom starting with the letter 'f'";
       break;
-
     case simdjson::N_ATOM_ERROR:
       msg = "Problem while parsing an atom starting with the letter 'n'";
       break;
@@ -223,7 +236,8 @@ QVariant JsonTreeViewModel::data(const QModelIndex &idx, int role) const {
       switch (m_fastJsonTree.type(n_idx)) {
       case NodeType::Str:
         return B.str;
-      case NodeType::Num:
+      case NodeType::NumFloat:
+      case NodeType::NumInt:
         return B.num;
       case NodeType::Bool:
         return B.boolean;
@@ -305,8 +319,10 @@ QString JsonTreeViewModel::nodeValueStr(const QModelIndex &idx) const {
   case NodeType::Object:
   case NodeType::Str:
     return m_fastJsonTree.value(n).toString();
-  case NodeType::Num:
+  case NodeType::NumFloat:
     return QString::number(m_fastJsonTree.value(n).toDouble(), 'g', 12);
+  case NodeType::NumInt:
+    return QString::number(m_fastJsonTree.value(n).toLongLong());
   case NodeType::Bool:
     return QString("%1").arg(m_fastJsonTree.value(n).toBool());
   default:
@@ -323,7 +339,7 @@ quint32 JsonTreeViewModel::subTreeNodesCount(const QModelIndex &idx) const {
   switch (m_fastJsonTree.type(n)) {
   case NodeType::Array:
   case NodeType::Object:
-    return m_fastJsonTree.m_nodeValueOrPos[n].index;
+    return m_fastJsonTree.m_nodeValueOrPos[n].index; // this stores the total number of subnodes
   default:
     return 0;
   }
@@ -344,4 +360,82 @@ void JsonTreeViewModel::setFontSize(const double pt) {
       emit dataChanged(a, b, {Qt::FontRole});
     }
   }
+}
+
+void JsonTreeViewModel::writeNode(quint32 node, QTextStream &stream) {
+  switch (m_fastJsonTree.type(node)) {
+  case NodeType::Null: {
+    stream << "null";
+    break;
+  }
+  case NodeType::Bool: {
+    const QString str = m_fastJsonTree.m_nodeValueOrPos[node].index ? "false" : "true";
+    stream << str;
+    break;
+  }
+  case NodeType::NumFloat: {
+    stream << m_fastJsonTree.m_nodeValueOrPos[node].num;
+    break;
+  }
+
+  case NodeType::NumInt: {
+    stream << m_fastJsonTree.m_nodeValueOrPos[node].index;
+    break;
+  }
+
+  case NodeType::Str: {
+    const string str = m_fastJsonTree.m_nodeStringValueTable[m_fastJsonTree.m_nodeValueOrPos[node].index];
+    stream << prepareStr(str);
+    break;
+  }
+
+  case NodeType::Array: {
+    stream << '[';
+    const quint32 childCount = m_fastJsonTree.m_childCount[node];
+    const quint32 firstChild = m_fastJsonTree.m_firstChildPosition[node];
+    for (quint32 row = 0; row < childCount; ++row) {
+      if (row) {
+        stream << ',';
+      }
+      writeNode(firstChild + row, stream);
+    }
+    stream << ']';
+    break;
+  }
+
+  case NodeType::Object: {
+    stream << '{';
+    const quint32 childCount = m_fastJsonTree.m_childCount[node];
+    const quint32 firstChild = m_fastJsonTree.m_firstChildPosition[node];
+    for (quint32 row = 0; row < childCount; ++row) {
+      if (row) {
+        stream << ',';
+      }
+      const quint32 n = firstChild + row;
+      stream << prepareStr(m_fastJsonTree.m_nodeKeyTable[m_fastJsonTree.m_nodeKeyPos[n]]) + ":";
+      writeNode(n, stream);
+    }
+    stream << '}';
+  }
+  }
+}
+
+bool JsonTreeViewModel::exportToJsonFile(const QModelIndex &rootIndex, const QString &outputFilePath) {
+
+  quint32 n = nodeFromIndex(rootIndex);
+  NodeType t = m_fastJsonTree.type(n);
+  const bool nodeIsContainer = t == NodeType::Object || t == NodeType::Array;
+  if (!nodeIsContainer) {
+    qWarning() << "The root node must be a container, e.g.: List or Dict";
+    return false;
+  }
+
+  QFile outputFile(outputFilePath);
+  if (!outputFile.open(QIODevice::WriteOnly)) {
+    qWarning() << "Could not open JSON export file:" << outputFilePath << outputFile.errorString();
+    return false;
+  }
+  QTextStream stream(&outputFile);
+  writeNode(n, stream);
+  return true;
 }

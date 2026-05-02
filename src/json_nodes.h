@@ -19,7 +19,8 @@ class QProgressDialog;
 enum class NodeType : unsigned char {
   Null,
   Bool,
-  Num,
+  NumFloat,
+  NumInt,
   Str,
   Array,
   Object,
@@ -28,7 +29,7 @@ enum class NodeType : unsigned char {
 class FastJsonTree {
   union Data {
     double num;
-    quint64 index;
+    qint64 index;
   };
   friend class ListViewSearchModel;
   friend class JsonTreeViewModel;

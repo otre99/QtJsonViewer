@@ -1,6 +1,7 @@
 #include <execution>
 #include "list_view_search_model.h"
 
+
 #include <algorithm>
 
 #include "json_treeview_model.h"
@@ -25,20 +26,23 @@ QVariant ListViewSearchModel::data(const QModelIndex &idx, int role) const {
   quint32 nidx = m_validNodes[idx.row()];
   switch (role) {
   case Qt::DisplayRole:
-    switch (m_jsonTreeViewModel->m_fastJsonTree.type(nidx)) {
-    case NodeType::Array:
-      return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-    case NodeType::Object:
-      return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-    case NodeType::Num:
-      return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-    case NodeType::Str:
-      return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-    case NodeType::Bool:
-      return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-    case NodeType::Null:
-      return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-    }
+    return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
+    // switch (m_jsonTreeViewModel->m_fastJsonTree.type(nidx)) {
+    // case NodeType::Array:
+    //   return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
+    // case NodeType::Object:
+    //   return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
+    // case NodeType::NumFloat:
+    //   return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
+    // case NodeType::NumInt:
+    //   return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
+    // case NodeType::Str:
+    //   return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
+    // case NodeType::Bool:
+    //   return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
+    // case NodeType::Null:
+    //   return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
+    // }
     // case Qt::ForegroundRole:
     //   switch (m_jsonTreeViewModel->m_fastJsonTree.type(nidx)) {
     //     case NodeType::Str:
@@ -127,12 +131,20 @@ void ListViewSearchModel::doSearch(SearchMode mode, const QString &searchText, b
                }
                break;
 
-             case SearchMode::ValueNum:
-               if (ft.type(nodeId) == NodeType::Num) {
+             case SearchMode::ValueNum: {
+
+               const auto t = ft.type(nodeId);
+               if (t == NodeType::NumFloat) {
                  const double v = ft.m_nodeValueOrPos[nodeId].num; // prefer an accessor
                  matches[nodeId] = numEqual(v, snum);
                }
+               if (t == NodeType::NumInt) {
+                 const quint64 v = ft.m_nodeValueOrPos[nodeId].index; // prefer an accessor
+                 matches[nodeId] = numEqual(v, snum);
+               }
+
                break;
+             }
 
              case SearchMode::ValueNull:
                matches[nodeId] = (ft.type(nodeId) == NodeType::Null);

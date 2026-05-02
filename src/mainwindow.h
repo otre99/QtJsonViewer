@@ -39,6 +39,7 @@ private:
   void setupTreeViewMenu(QMenu &menu, const QModelIndex &index);
   void collapseRecursively(QTreeView *v, const QModelIndex &root);
   void expandRecursively(QTreeView *v, const QModelIndex &root, int lev = 0);
+  void exportToJsonFile(const QModelIndex &rootIndex);
 
   Ui::MainWindow *ui;
   JsonTreeViewModel *m_jsonTreeModel{nullptr};

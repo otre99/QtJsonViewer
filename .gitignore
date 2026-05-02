@@ -2,3 +2,6 @@
 /src/build/*
 /deploy_app_linux.sh
 /src/.qtcreator/*
+/appDir/AppRun/*
+/appDir/AppRun/*
+/appDir/*
