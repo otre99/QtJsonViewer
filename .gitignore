@@ -5,3 +5,7 @@
 /appDir/AppRun/*
 /appDir/AppRun/*
 /appDir/*
+/installer/packages/com.rbt.qtjsonviewer/data/*
+!/installer/packages/com.rbt.qtjsonviewer/data/.gitkeep
+/installer/output/*
+!/installer/output/.gitkeep
