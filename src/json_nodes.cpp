@@ -82,7 +82,7 @@ QVariant FastJsonTree::value(quint32 n) const {
   case NodeType::NumFloat:
     return m_nodeValueOrPos[n].num;
   case NodeType::NumInt:
-      return m_nodeValueOrPos[n].index;
+    return m_nodeValueOrPos[n].index;
   case NodeType::Bool:
     return bool(m_nodeValueOrPos[n].index);
   case NodeType::Str:
@@ -102,7 +102,7 @@ string FastJsonTree::valueAsStr(quint32 n) const {
   case NodeType::NumFloat:
     return format("{}", m_nodeValueOrPos[n].num);
   case NodeType::NumInt:
-      return format("{}", m_nodeValueOrPos[n].index);
+    return format("{}", m_nodeValueOrPos[n].index);
   case NodeType::Bool:
     return m_nodeValueOrPos[n].index ? "true" : "false";
   case NodeType::Str:

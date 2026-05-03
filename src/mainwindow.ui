@@ -61,7 +61,7 @@
      <x>0</x>
      <y>0</y>
      <width>1257</width>
-     <height>19</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -88,7 +88,7 @@
   </widget>
   <widget class="QDockWidget" name="dockWidgetInfo">
    <property name="features">
-    <set>QDockWidget::DockWidgetFeature::DockWidgetFloatable</set>
+    <set>QDockWidget::DockWidgetFeature::NoDockWidgetFeatures</set>
    </property>
    <attribute name="dockWidgetArea">
     <number>1</number>

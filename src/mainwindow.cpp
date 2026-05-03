@@ -13,6 +13,17 @@
 #include "list_view_search_model.h"
 #include "ui_mainwindow.h"
 
+namespace {
+
+template <class View> void changeSectionColor(View *view) {
+  QPalette pal = view->palette();
+  // Highlight background color
+  pal.setColor(QPalette::Highlight, Qt::lightGray);
+  view->setPalette(pal);
+}
+
+} // namespace
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
   ui->setupUi(this);
   setFocusPolicy(Qt::StrongFocus);
@@ -34,11 +45,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
   m_headerView = ui->treeView->header();
 
   ui->treeView->setContextMenuPolicy(Qt::CustomContextMenu);
+  changeSectionColor(ui->treeView);
 
   // search list view
   ui->listViewSearch->setModel(m_searchListModel = new ListViewSearchModel(m_jsonTreeModel, this));
   ui->listViewSearch->setAlternatingRowColors(true);
   connect(ui->lineEditSearchText, &QLineEdit::returnPressed, ui->pushButtonSearch, &QPushButton::click);
+  changeSectionColor(ui->listViewSearch);
 
   // set the font size for models
   m_jsonTreeModel->setFontSize(m_currentPt);
@@ -237,7 +250,8 @@ void MainWindow::updateRecentMenu() {
     QAction *a;
     if (i < recent_actions.size()) { // use existing action
       a = recent_actions[i];
-    } else {
+    }
+    else {
       a = new QAction(this);
       connect(a, &QAction::triggered, this, &MainWindow::openRecent);
       ui->menuRecent_files->addAction(a);

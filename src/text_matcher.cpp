@@ -6,7 +6,8 @@ TextMatcher::TextMatcher(const string &s, bool caseSensitive, bool wholeWord, bo
 bool TextMatcher::match(const std::string &hay) const {
   if (m_caseSensitive) { // case sensitive -> whole Word + Sub-String
     return m_wholeWord ? hay == m_msg : hay.find(m_msg) != string::npos;
-  } else {
+  }
+  else {
     if (m_wholeWord) { // case insensitive + whole word
       if (hay.size() != m_msg.size()) {
         return false;
@@ -17,7 +18,8 @@ bool TextMatcher::match(const std::string &hay) const {
         }
       }
       return true;
-    } else { // case insensitive + substring
+    }
+    else { // case insensitive + substring
       size_t sub_len = m_msg.size();
       size_t str_len = hay.size();
       if (str_len < sub_len) {

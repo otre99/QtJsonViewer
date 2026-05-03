@@ -5,7 +5,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets)
-find_package(TBB REQUIRED)
+if(NOT WIN32)
+    find_package(TBB REQUIRED)
+endif()
 
 find_package(simdjson CONFIG QUIET)
 if(TARGET simdjson::simdjson AND NOT TARGET simdjson)
@@ -38,13 +40,18 @@ qt_add_executable(QtJsonViewer
     text_matcher.h text_matcher.cpp
 )
 
+
+
 target_link_libraries(QtJsonViewer
     PRIVATE
         Qt::Core
         Qt::Widgets
         simdjson
-        TBB::tbb
 )
+
+if(NOT WIN32)
+    target_link_libraries(QtJsonViewer PRIVATE TBB::tbb)
+endif()
 
 include(GNUInstallDirs)
 

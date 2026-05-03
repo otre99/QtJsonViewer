@@ -27,38 +27,6 @@ QVariant ListViewSearchModel::data(const QModelIndex &idx, int role) const {
   switch (role) {
   case Qt::DisplayRole:
     return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-    // switch (m_jsonTreeViewModel->m_fastJsonTree.type(nidx)) {
-    // case NodeType::Array:
-    //   return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-    // case NodeType::Object:
-    //   return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-    // case NodeType::NumFloat:
-    //   return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-    // case NodeType::NumInt:
-    //   return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-    // case NodeType::Str:
-    //   return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-    // case NodeType::Bool:
-    //   return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-    // case NodeType::Null:
-    //   return QString::fromStdString(m_jsonTreeViewModel->m_fastJsonTree.nodePreview(nidx));
-    // }
-    // case Qt::ForegroundRole:
-    //   switch (m_jsonTreeViewModel->m_fastJsonTree.type(nidx)) {
-    //     case NodeType::Str:
-    //       return m_jsonTreeViewModel->B.str;
-    //     case NodeType::Num:
-    //       return m_jsonTreeViewModel->B.num;
-    //     case NodeType::Bool:
-    //       return m_jsonTreeViewModel->B.boolean;
-    //     case NodeType::Null:
-    //       return m_jsonTreeViewModel->B.nullish;
-    //     case NodeType::Object:
-    //       return m_jsonTreeViewModel->B.containerObject;
-    //     case NodeType::Array:
-    //       return m_jsonTreeViewModel->B.containerArray;
-    //   }
-
   case Qt::FontRole:
     return m_baseFont;
 

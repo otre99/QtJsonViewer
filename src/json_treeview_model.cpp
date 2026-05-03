@@ -5,6 +5,7 @@
 
 #include <QApplication>
 #include <QBrush>
+#include <QByteArray>
 #include <QFile>
 #include <QFont>
 #include <QFontDatabase>
@@ -12,22 +13,80 @@
 #include <QIcon>
 #include <QJsonArray>
 #include <QWidget>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
 
 namespace {
 
 QString prepareStr(const string &str) {
-  rapidjson::StringBuffer sb;
-  rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
-  writer.String(str.data(), str.length());
-  return QString::fromStdString(sb.GetString());
+  constexpr char hex[] = "0123456789abcdef";
+
+  const char *data = str.data();
+  const qsizetype len = static_cast<qsizetype>(str.size());
+
+  qsizetype firstEscaped = 0;
+  while (firstEscaped < len) {
+    const unsigned char ch = static_cast<unsigned char>(data[firstEscaped]);
+    if (ch < 0x20 || ch == '"' || ch == '\\') {
+      break;
+    }
+    ++firstEscaped;
+  }
+
+  QByteArray out;
+  out.reserve(static_cast<qsizetype>(str.size() + 2));
+  out.append('"');
+
+  if (firstEscaped == len) {
+    out.append(data, len);
+    out.append('"');
+    return QString::fromUtf8(out);
+  }
+
+  out.append(data, firstEscaped);
+  for (qsizetype i = firstEscaped; i < len; ++i) {
+    const unsigned char ch = static_cast<unsigned char>(data[i]);
+    switch (ch) {
+    case '"':
+      out.append("\\\"");
+      break;
+    case '\\':
+      out.append("\\\\");
+      break;
+    case '\b':
+      out.append("\\b");
+      break;
+    case '\f':
+      out.append("\\f");
+      break;
+    case '\n':
+      out.append("\\n");
+      break;
+    case '\r':
+      out.append("\\r");
+      break;
+    case '\t':
+      out.append("\\t");
+      break;
+    default:
+      if (ch < 0x20) {
+        out.append("\\u00");
+        out.append(hex[ch >> 4]);
+        out.append(hex[ch & 0x0f]);
+      }
+      else {
+        out.append(data[i]);
+      }
+      break;
+    }
+  }
+
+  out.append('"');
+  return QString::fromUtf8(out);
 }
 
 } // namespace
 
 JsonTreeViewModel::JsonTreeViewModel(QObject *parent) : QAbstractItemModel(parent) {
-  m_baseFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+  m_baseFont = QFontDatabase::systemFont(QFontDatabase::GeneralFont);
 
   B.key = QColor(0, 87, 174);
   B.str = QColor(191, 3, 3);
