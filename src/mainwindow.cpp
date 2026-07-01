@@ -1,11 +1,16 @@
 #include "mainwindow.h"
 
 #include <QClipboard>
+#include <QDragEnterEvent>
+#include <QDragMoveEvent>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QJsonObject>
 #include <QMessageBox>
+#include <QMimeData>
 #include <QProgressDialog>
 #include <QSettings>
+#include <QUrl>
 #include <QtConcurrent/QtConcurrent>
 
 #include "QJsonDocument"
@@ -22,10 +27,39 @@ template <class View> void changeSectionColor(View *view) {
   view->setPalette(pal);
 }
 
+QString firstDroppedLocalFile(const QMimeData *mimeData) {
+  if (!mimeData || !mimeData->hasUrls()) {
+    return {};
+  }
+
+  for (const QUrl &url : mimeData->urls()) {
+    if (!url.isLocalFile()) {
+      continue;
+    }
+
+    const QString path = url.toLocalFile();
+    if (!path.isEmpty() && QFileInfo(path).isFile()) {
+      return path;
+    }
+  }
+
+  return {};
+}
+
+void acceptIfFileDrop(QDragMoveEvent *event) {
+  if (!firstDroppedLocalFile(event->mimeData()).isEmpty()) {
+    event->acceptProposedAction();
+    return;
+  }
+
+  event->ignore();
+}
+
 } // namespace
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
   ui->setupUi(this);
+  setAcceptDrops(true);
   setFocusPolicy(Qt::StrongFocus);
 
   // tree view
@@ -88,6 +122,25 @@ void MainWindow::openRecent() {
   const QString path = a->data().toString();
   if (path.isEmpty())
     return;
+  loadJsonFile(path);
+}
+
+void MainWindow::dragEnterEvent(QDragEnterEvent *event) {
+  acceptIfFileDrop(event);
+}
+
+void MainWindow::dragMoveEvent(QDragMoveEvent *event) {
+  acceptIfFileDrop(event);
+}
+
+void MainWindow::dropEvent(QDropEvent *event) {
+  const QString path = firstDroppedLocalFile(event->mimeData());
+  if (path.isEmpty()) {
+    event->ignore();
+    return;
+  }
+
+  event->acceptProposedAction();
   loadJsonFile(path);
 }
 
@@ -250,8 +303,7 @@ void MainWindow::updateRecentMenu() {
     QAction *a;
     if (i < recent_actions.size()) { // use existing action
       a = recent_actions[i];
-    }
-    else {
+    } else {
       a = new QAction(this);
       connect(a, &QAction::triggered, this, &MainWindow::openRecent);
       ui->menuRecent_files->addAction(a);
@@ -323,6 +375,15 @@ void MainWindow::setupTreeViewMenu(QMenu &menu, const QModelIndex &index) {
   if (nodeIsContainer) {
     quint32 subnodes = m_jsonTreeModel->subTreeNodesCount(index);
     quint32 rows = m_jsonTreeModel->rowCount(index);
+
+    act = menu.addAction("Copy Key");
+    connect(act, &QAction::triggered, this, [&]() {
+      QString key_text = m_jsonTreeModel->nodeKey(index);
+      QClipboard *clipboard = QGuiApplication::clipboard();
+      clipboard->setText(key_text);
+    });
+
+    menu.addSeparator();
 
     if (subnodes <= kMaxExpandCollapseNodesCount || subnodes == rows) {
       act = menu.addAction("Collapse all");

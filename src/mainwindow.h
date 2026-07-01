@@ -6,6 +6,9 @@
 
 class JsonTreeViewModel;
 class ListViewSearchModel;
+class QDragEnterEvent;
+class QDragMoveEvent;
+class QDropEvent;
 class QTreeView;
 
 QT_BEGIN_NAMESPACE
@@ -21,6 +24,11 @@ public:
   MainWindow(QWidget *parent = nullptr);
   ~MainWindow();
   void loadJsonFile(const QString &jsonFilePath);
+
+protected:
+  void dragEnterEvent(QDragEnterEvent *event) override;
+  void dragMoveEvent(QDragMoveEvent *event) override;
+  void dropEvent(QDropEvent *event) override;
 
 private slots:
   void on_actionOpen_JSON_triggered();
