@@ -439,7 +439,10 @@ void MainWindow::expandRecursively(QTreeView *v, const QModelIndex &root, int le
 }
 
 void MainWindow::exportToJsonFile(const QModelIndex &rootIndex) {
-  const QString jsonOutputFile = QFileDialog::getSaveFileName(this, "Export JSON file");
+
+  const QString key = m_jsonTreeModel->nodeKey(rootIndex);
+  const QString exportedFileName = key + ".json";
+  const QString jsonOutputFile = QFileDialog::getSaveFileName(this, "Export JSON file", exportedFileName);
   if (jsonOutputFile.isEmpty()) {
     return;
   }

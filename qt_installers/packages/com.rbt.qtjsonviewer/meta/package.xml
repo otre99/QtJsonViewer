@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  __APP_VERSION__ and __RELEASE_DATE__ are replaced by build_installer.sh at build time.
+-->
+<Package>
+    <DisplayName>QtJsonViewer</DisplayName>
+    <Description>Fast desktop viewer for large JSON documents (Qt 6 + simdjson).</Description>
+    <Version>__APP_VERSION__</Version>
+    <ReleaseDate>__RELEASE_DATE__</ReleaseDate>
+    <Name>com.rbt.qtjsonviewer</Name>
+    <Default>true</Default>
+    <ForcedInstallation>true</ForcedInstallation>
+    <Script>installscript.qs</Script>
+    <Licenses>
+        <License name="MIT License" file="LICENSE.txt" />
+    </Licenses>
+</Package>
